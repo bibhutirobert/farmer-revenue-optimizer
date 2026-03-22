@@ -1,0 +1,436 @@
+{
+  "crops": {
+    "rice": {
+      "name_en": "Rice (Paddy)",
+      "name_hi": "चावल (धान)",
+      "price_per_quintal": 2183,
+      "price_type": "msp",
+      "typical_yield_quintal_per_acre": 12,
+      "seasons": ["kharif"],
+      "water_requirement": "high",
+      "base_cost_per_acre": {
+        "seed": 2000,
+        "fertilizer": 3500,
+        "pesticide": 2000,
+        "labour": 5000,
+        "irrigation": 2500,
+        "other": 1000
+      },
+      "states_primary": ["West Bengal", "Punjab", "Uttar Pradesh", "Andhra Pradesh", "Tamil Nadu", "Bihar", "Odisha"],
+      "low_cost_tips_en": [
+        "Use SRI (System of Rice Intensification) to reduce seed use by 80% and increase yield by 20-50%",
+        "Apply neem-coated urea to slow nitrogen release and cut fertilizer wastage by 10-15%",
+        "Use Dhaincha (green manure) before transplanting — saves Rs. 1500-2000/acre on fertilizer"
+      ],
+      "low_cost_tips_hi": [
+        "SRI पद्धति से बीज लागत 80% कम और उपज 20-50% अधिक",
+        "नीम लेपित यूरिया से नाइट्रोजन की बर्बादी 10-15% कम",
+        "रोपाई से पहले ढैंचा (हरी खाद) से Rs. 1500-2000/एकड़ उर्वरक बचत"
+      ]
+    },
+    "wheat": {
+      "name_en": "Wheat",
+      "name_hi": "गेहूं",
+      "price_per_quintal": 2275,
+      "price_type": "msp",
+      "typical_yield_quintal_per_acre": 18,
+      "seasons": ["rabi"],
+      "water_requirement": "medium",
+      "base_cost_per_acre": {
+        "seed": 1500,
+        "fertilizer": 3000,
+        "pesticide": 1000,
+        "labour": 3500,
+        "irrigation": 2000,
+        "other": 800
+      },
+      "states_primary": ["Punjab", "Haryana", "Uttar Pradesh", "Madhya Pradesh", "Rajasthan", "Bihar"],
+      "low_cost_tips_en": [
+        "Zero-till sowing after paddy saves Rs. 2000/acre on tillage and retains soil moisture",
+        "Split urea into 2-3 doses at sowing, tillering, and jointing to cut wastage by 20%",
+        "Use certified farm-saved seed every 3rd year — reduces seed cost by 60%"
+      ],
+      "low_cost_tips_hi": [
+        "धान के बाद जीरो-टिल बुवाई से Rs. 2000/एकड़ जुताई बचत",
+        "यूरिया को 2-3 भागों में डालें — बर्बादी 20% कम",
+        "केवल हर तीसरे वर्ष प्रमाणित बीज खरीदें — 60% बीज लागत बचत"
+      ]
+    },
+    "cotton": {
+      "name_en": "Cotton",
+      "name_hi": "कपास",
+      "price_per_quintal": 6620,
+      "price_type": "msp",
+      "typical_yield_quintal_per_acre": 8,
+      "seasons": ["kharif"],
+      "water_requirement": "medium",
+      "base_cost_per_acre": {
+        "seed": 1200,
+        "fertilizer": 4000,
+        "pesticide": 5000,
+        "labour": 8000,
+        "irrigation": 3000,
+        "other": 1500
+      },
+      "states_primary": ["Maharashtra", "Gujarat", "Telangana", "Andhra Pradesh", "Punjab", "Rajasthan", "Madhya Pradesh"],
+      "low_cost_tips_en": [
+        "Use sticky yellow traps for whitefly control — saves Rs. 1500/acre on pesticides",
+        "Intercrop with moong/cowpea in inter-rows to fix nitrogen and earn bonus income",
+        "Bt cotton seed drastically cuts bollworm-related pesticide cost"
+      ],
+      "low_cost_tips_hi": [
+        "सफेद मक्खी नियंत्रण के लिए पीले चिपचिपे जाल — Rs. 1500/एकड़ कीटनाशक बचत",
+        "अंतर-पंक्तियों में मूंग/लोबिया से नाइट्रोजन स्थिरीकरण और अतिरिक्त आय",
+        "Bt कपास बीज से बॉलवर्म कीटनाशक लागत में भारी कमी"
+      ]
+    },
+    "sugarcane": {
+      "name_en": "Sugarcane",
+      "name_hi": "गन्ना",
+      "price_per_quintal": 340,
+      "price_type": "frp",
+      "typical_yield_quintal_per_acre": 280,
+      "seasons": ["annual"],
+      "water_requirement": "very_high",
+      "base_cost_per_acre": {
+        "seed": 6000,
+        "fertilizer": 5000,
+        "pesticide": 2000,
+        "labour": 12000,
+        "irrigation": 8000,
+        "other": 2000
+      },
+      "states_primary": ["Uttar Pradesh", "Maharashtra", "Karnataka", "Tamil Nadu", "Bihar", "Gujarat"],
+      "low_cost_tips_en": [
+        "Ratoon cropping (2nd year from same roots) eliminates Rs. 6000/acre seed cost entirely",
+        "Drip irrigation saves 30-40% water and reduces electricity/diesel cost by Rs. 3000/acre",
+        "Intercrop wheat/garlic in inter-rows (Oct-Mar) for Rs. 15000-25000 extra income"
+      ],
+      "low_cost_tips_hi": [
+        "रतून फसल से Rs. 6000/एकड़ बीज लागत पूरी तरह समाप्त",
+        "ड्रिप सिंचाई से 30-40% पानी और Rs. 3000/एकड़ बिजली/डीजल बचत",
+        "अंतर-पंक्तियों में गेहूं/लहसुन (अक्टूबर-मार्च) से Rs. 15000-25000 अतिरिक्त आय"
+      ]
+    },
+    "maize": {
+      "name_en": "Maize (Corn)",
+      "name_hi": "मक्का",
+      "price_per_quintal": 2090,
+      "price_type": "msp",
+      "typical_yield_quintal_per_acre": 20,
+      "seasons": ["kharif", "rabi", "zaid"],
+      "water_requirement": "medium",
+      "base_cost_per_acre": {
+        "seed": 1500,
+        "fertilizer": 3000,
+        "pesticide": 1500,
+        "labour": 3500,
+        "irrigation": 1500,
+        "other": 700
+      },
+      "states_primary": ["Karnataka", "Andhra Pradesh", "Telangana", "Bihar", "Uttar Pradesh", "Rajasthan", "Madhya Pradesh"],
+      "low_cost_tips_en": [
+        "Maize+soybean intercrop (3:1 row ratio) increases combined income by 30-40%",
+        "Apply zinc sulphate once every 3 years for sustained yield improvement",
+        "Use FYM (farmyard manure) at 5 tonnes/acre to cut chemical fertilizer cost by 25%"
+      ],
+      "low_cost_tips_hi": [
+        "मक्का+सोयाबीन अंतरफसल (3:1) से संयुक्त आय 30-40% बढ़ती है",
+        "हर 3 साल में एक बार जिंक सल्फेट डालें",
+        "5 टन/एकड़ FYM से रासायनिक उर्वरक लागत 25% कम"
+      ]
+    },
+    "soybean": {
+      "name_en": "Soybean",
+      "name_hi": "सोयाबीन",
+      "price_per_quintal": 4600,
+      "price_type": "msp",
+      "typical_yield_quintal_per_acre": 8,
+      "seasons": ["kharif"],
+      "water_requirement": "medium",
+      "base_cost_per_acre": {
+        "seed": 2500,
+        "fertilizer": 2000,
+        "pesticide": 2000,
+        "labour": 3000,
+        "irrigation": 1000,
+        "other": 600
+      },
+      "states_primary": ["Madhya Pradesh", "Maharashtra", "Rajasthan", "Karnataka"],
+      "low_cost_tips_en": [
+        "Soybean fixes its own nitrogen — skip DAP entirely and use only Rhizobium seed treatment (saves Rs. 1500/acre)",
+        "Use broad-bed furrow (BBF) sowing for rainwater harvesting in rainfed fields",
+        "Maintain 45x5 cm spacing for best pod filling and mechanized harvesting"
+      ],
+      "low_cost_tips_hi": [
+        "सोयाबीन खुद नाइट्रोजन बनाता है — DAP छोड़ें, केवल राइजोबियम बीज उपचार (Rs. 1500/एकड़ बचत)",
+        "वर्षाश्रित खेतों में वर्षा जल संचयन के लिए BBF बुवाई",
+        "45x5 cm अंतराल से सर्वोत्तम फली भराव और यंत्रीकृत कटाई"
+      ]
+    },
+    "groundnut": {
+      "name_en": "Groundnut (Peanut)",
+      "name_hi": "मूंगफली",
+      "price_per_quintal": 6377,
+      "price_type": "msp",
+      "typical_yield_quintal_per_acre": 10,
+      "seasons": ["kharif", "rabi"],
+      "water_requirement": "medium",
+      "base_cost_per_acre": {
+        "seed": 4000,
+        "fertilizer": 2000,
+        "pesticide": 1500,
+        "labour": 4000,
+        "irrigation": 1500,
+        "other": 800
+      },
+      "states_primary": ["Gujarat", "Andhra Pradesh", "Tamil Nadu", "Rajasthan", "Karnataka"],
+      "low_cost_tips_en": [
+        "Apply gypsum (200 kg/acre) at pod initiation — fixes calcium and boosts yield by 15-20%",
+        "Use farm-saved seed with Rhizobium + Thiram treatment to cut seed cost by 60%",
+        "Intercrop with bajra at 6:2 row ratio — traditional dryland system with 20% income boost"
+      ],
+      "low_cost_tips_hi": [
+        "फली बनने पर जिप्सम (200 kg/एकड़) — कैल्शियम स्थिरीकरण, उपज 15-20% बढ़ती है",
+        "राइजोबियम+थिरम उपचार के साथ फार्म-सेव्ड बीज — 60% बीज लागत बचत",
+        "बाजरे के साथ 6:2 पंक्ति अनुपात — पारंपरिक शुष्क भूमि प्रणाली, 20% अधिक आय"
+      ]
+    },
+    "mustard": {
+      "name_en": "Mustard / Rapeseed",
+      "name_hi": "सरसों",
+      "price_per_quintal": 5650,
+      "price_type": "msp",
+      "typical_yield_quintal_per_acre": 8,
+      "seasons": ["rabi"],
+      "water_requirement": "low",
+      "base_cost_per_acre": {
+        "seed": 400,
+        "fertilizer": 2000,
+        "pesticide": 800,
+        "labour": 2000,
+        "irrigation": 1000,
+        "other": 500
+      },
+      "states_primary": ["Rajasthan", "Uttar Pradesh", "Haryana", "Madhya Pradesh", "West Bengal"],
+      "low_cost_tips_en": [
+        "Mustard needs only 2 irrigations — at branching and pod filling (saves heavily on water cost)",
+        "Very low seed rate (1-1.5 kg/acre) — one of the lowest seed costs of any crop",
+        "Place honeybee hives near flowering crop for 15-20% pollination-driven yield boost"
+      ],
+      "low_cost_tips_hi": [
+        "सरसों को केवल 2 सिंचाई — शाखा और फली भरने पर (पानी लागत में भारी बचत)",
+        "बहुत कम बीज दर (1-1.5 kg/एकड़) — किसी भी फसल में सबसे कम बीज लागत",
+        "फूल आने पर मधुमक्खी पालन से 15-20% परागण द्वारा उपज वृद्धि"
+      ]
+    },
+    "jowar": {
+      "name_en": "Jowar (Sorghum)",
+      "name_hi": "ज्वार",
+      "price_per_quintal": 3180,
+      "price_type": "msp",
+      "typical_yield_quintal_per_acre": 10,
+      "seasons": ["kharif", "rabi"],
+      "water_requirement": "low",
+      "base_cost_per_acre": {
+        "seed": 500,
+        "fertilizer": 2000,
+        "pesticide": 800,
+        "labour": 2500,
+        "irrigation": 800,
+        "other": 500
+      },
+      "states_primary": ["Maharashtra", "Karnataka", "Andhra Pradesh", "Tamil Nadu", "Madhya Pradesh", "Uttar Pradesh"],
+      "low_cost_tips_en": [
+        "Jowar is highly drought-tolerant — ideal for low-rainfall zones with minimal irrigation investment",
+        "Sell dry stalks as animal fodder for Rs. 2000-4000/acre additional income",
+        "Intercrop with red gram (arhar) at 2:1 — arhar fixes nitrogen and fetches Rs. 7000/qtl"
+      ],
+      "low_cost_tips_hi": [
+        "ज्वार उच्च सूखा-सहिष्णु है — कम वर्षा क्षेत्रों के लिए न्यूनतम सिंचाई निवेश",
+        "सूखे डंठल पशु चारे के रूप में बेचें — Rs. 2000-4000/एकड़ अतिरिक्त आय",
+        "2:1 अनुपात में लाल अरहर के साथ — अरहर नाइट्रोजन स्थिर करती है"
+      ]
+    },
+    "bajra": {
+      "name_en": "Bajra (Pearl Millet)",
+      "name_hi": "बाजरा",
+      "price_per_quintal": 2500,
+      "price_type": "msp",
+      "typical_yield_quintal_per_acre": 10,
+      "seasons": ["kharif"],
+      "water_requirement": "low",
+      "base_cost_per_acre": {
+        "seed": 300,
+        "fertilizer": 1500,
+        "pesticide": 500,
+        "labour": 2000,
+        "irrigation": 500,
+        "other": 400
+      },
+      "states_primary": ["Rajasthan", "Maharashtra", "Gujarat", "Uttar Pradesh", "Haryana"],
+      "low_cost_tips_en": [
+        "Bajra is one of the lowest input-cost crops — ideal as risk hedge in dry/semi-arid zones",
+        "Intercrop with cowpea at 2:1 ratio for soil improvement and Rs. 3000-5000 extra income",
+        "Use hybrid seed only in first year; farm-save in subsequent seasons to cut seed cost"
+      ],
+      "low_cost_tips_hi": [
+        "बाजरा सबसे कम लागत वाली फसलों में — शुष्क/अर्ध-शुष्क क्षेत्रों में जोखिम बचाव",
+        "2:1 अनुपात में लोबिया के साथ — मिट्टी सुधार और Rs. 3000-5000 अतिरिक्त आय",
+        "केवल पहले वर्ष संकर बीज, बाद में फार्म-सेव्ड बीज से लागत कम"
+      ]
+    },
+    "onion": {
+      "name_en": "Onion",
+      "name_hi": "प्याज",
+      "price_per_quintal": 2000,
+      "price_type": "market",
+      "price_note_en": "Market price is highly variable (Rs. 500-5000/qtl). Conservative average used.",
+      "price_note_hi": "बाजार भाव बहुत परिवर्तनशील (Rs. 500-5000/qtl)। रूढ़िवादी औसत लिया गया।",
+      "typical_yield_quintal_per_acre": 50,
+      "seasons": ["rabi", "kharif"],
+      "water_requirement": "medium",
+      "base_cost_per_acre": {
+        "seed": 3000,
+        "fertilizer": 4000,
+        "pesticide": 3000,
+        "labour": 8000,
+        "irrigation": 3000,
+        "other": 2000
+      },
+      "states_primary": ["Maharashtra", "Karnataka", "Madhya Pradesh", "Gujarat", "Rajasthan"],
+      "low_cost_tips_en": [
+        "Use drip irrigation with fertigation to cut water and fertilizer cost by 30%",
+        "Store in well-ventilated shade structure to hold stock for better market price",
+        "Sell to local processing unit (dehydration plant) to avoid harvest-time price crash"
+      ],
+      "low_cost_tips_hi": [
+        "ड्रिप सिंचाई और फर्टिगेशन से पानी और उर्वरक लागत 30% कम",
+        "बेहतर भाव के लिए हवादार छाया में भंडारण करें",
+        "कटाई के समय मूल्य गिरावट से बचने के लिए प्रसंस्करण इकाई को बेचें"
+      ]
+    },
+    "tomato": {
+      "name_en": "Tomato",
+      "name_hi": "टमाटर",
+      "price_per_quintal": 1500,
+      "price_type": "market",
+      "price_note_en": "Market price highly variable (Rs. 200-8000/qtl). Conservative average used.",
+      "price_note_hi": "बाजार भाव बहुत परिवर्तनशील (Rs. 200-8000/qtl)। रूढ़िवादी औसत लिया गया।",
+      "typical_yield_quintal_per_acre": 80,
+      "seasons": ["rabi", "zaid", "kharif"],
+      "water_requirement": "high",
+      "base_cost_per_acre": {
+        "seed": 3500,
+        "fertilizer": 5000,
+        "pesticide": 5000,
+        "labour": 12000,
+        "irrigation": 4000,
+        "other": 3000
+      },
+      "states_primary": ["Andhra Pradesh", "Karnataka", "Maharashtra", "Madhya Pradesh", "Uttar Pradesh"],
+      "low_cost_tips_en": [
+        "Use plastic mulching (or dry grass) to conserve moisture and suppress weeds — saves 2 irrigations",
+        "Stake plants with bamboo from farm instead of iron rods — saves Rs. 4000-6000/acre",
+        "Contract farming with processor/ketchup factory locks in price before sowing — eliminates price risk",
+        "Vertical trellis growing in polyhouse allows 2x density, off-season production, and 3-5x price premium"
+      ],
+      "low_cost_tips_hi": [
+        "प्लास्टिक मल्चिंग से नमी बचत और खरपतवार नियंत्रण — 2 सिंचाई की बचत",
+        "लोहे की रॉड की जगह खेत के बांस से बांधें — Rs. 4000-6000/एकड़ बचत",
+        "बुवाई से पहले केचप फैक्ट्री से अनुबंध — मूल्य जोखिम समाप्त",
+        "पॉलीहाउस में ऊर्ध्वाधर ट्रेलिस से 2x घनत्व, ऑफ-सीजन उत्पादन, 3-5x मूल्य प्रीमियम"
+      ]
+    },
+    "potato": {
+      "name_en": "Potato",
+      "name_hi": "आलू",
+      "price_per_quintal": 1000,
+      "price_type": "market",
+      "price_note_en": "Market price variable (Rs. 400-2500/qtl). Conservative average used.",
+      "price_note_hi": "बाजार भाव परिवर्तनशील (Rs. 400-2500/qtl)। रूढ़िवादी औसत लिया गया।",
+      "typical_yield_quintal_per_acre": 80,
+      "seasons": ["rabi"],
+      "water_requirement": "medium",
+      "base_cost_per_acre": {
+        "seed": 14000,
+        "fertilizer": 5000,
+        "pesticide": 3000,
+        "labour": 6000,
+        "irrigation": 2500,
+        "other": 2000
+      },
+      "states_primary": ["Uttar Pradesh", "West Bengal", "Bihar", "Punjab", "Madhya Pradesh"],
+      "low_cost_tips_en": [
+        "Use cold-storage (Jan-March is peak price period) — hold stock to sell at 2-3x harvest price",
+        "Use healthy farm-saved seed with Thiram treatment — cuts Rs. 14000/acre seed cost by 50-60%",
+        "Join FPO (Farmer Producer Organization) for bulk input purchase discounts (15-20% off)"
+      ],
+      "low_cost_tips_hi": [
+        "कोल्ड स्टोरेज (जनवरी-मार्च पीक मूल्य) — कटाई मूल्य के 2-3 गुना पर बेचें",
+        "थिरम उपचार के साथ फार्म-सेव्ड बीज — Rs. 14000/एकड़ बीज लागत 50-60% कम",
+        "FPO से जुड़ें — थोक खरीद पर 15-20% छूट"
+      ]
+    },
+    "turmeric": {
+      "name_en": "Turmeric",
+      "name_hi": "हल्दी",
+      "price_per_quintal": 8000,
+      "price_type": "market",
+      "price_note_en": "No MSP. Market price Rs. 5000-15000/qtl. Mid-range estimate used.",
+      "price_note_hi": "कोई MSP नहीं। बाजार भाव Rs. 5000-15000/qtl। मध्य-अनुमान लिया गया।",
+      "typical_yield_quintal_per_acre": 25,
+      "seasons": ["kharif"],
+      "water_requirement": "medium",
+      "base_cost_per_acre": {
+        "seed": 15000,
+        "fertilizer": 4000,
+        "pesticide": 2000,
+        "labour": 8000,
+        "irrigation": 3000,
+        "other": 2000
+      },
+      "states_primary": ["Telangana", "Andhra Pradesh", "Tamil Nadu", "Maharashtra", "Karnataka", "Odisha"],
+      "low_cost_tips_en": [
+        "Save rhizomes from own harvest to eliminate Rs. 15000/acre seed cost next year",
+        "Grow under banana shade — dual income from bananas + turmeric in same field",
+        "Process into turmeric powder or value-added capsules for 3-5x farm-gate price premium"
+      ],
+      "low_cost_tips_hi": [
+        "अपनी फसल के प्रकंद बचाएं — अगले वर्ष Rs. 15000/एकड़ बीज लागत शून्य",
+        "केले की छाया में उगाएं — एक ही खेत से केला+हल्दी की दोहरी आय",
+        "हल्दी पाउडर/कैप्सूल बनाएं — खेत मूल्य का 3-5 गुना प्रीमियम"
+      ]
+    },
+    "chilli": {
+      "name_en": "Chilli (Dry)",
+      "name_hi": "मिर्च (सूखी)",
+      "price_per_quintal": 12000,
+      "price_type": "market",
+      "price_note_en": "Market price Rs. 8000-20000/qtl depending on variety. Conservative estimate used.",
+      "price_note_hi": "बाजार भाव किस्म अनुसार Rs. 8000-20000/qtl। रूढ़िवादी अनुमान।",
+      "typical_yield_quintal_per_acre": 8,
+      "seasons": ["kharif", "rabi"],
+      "water_requirement": "medium",
+      "base_cost_per_acre": {
+        "seed": 3000,
+        "fertilizer": 4000,
+        "pesticide": 5000,
+        "labour": 10000,
+        "irrigation": 3000,
+        "other": 2000
+      },
+      "states_primary": ["Andhra Pradesh", "Telangana", "Karnataka", "Maharashtra", "Rajasthan"],
+      "low_cost_tips_en": [
+        "Use bio-pesticides (neem oil, Beauveria bassiana) to cut pesticide cost by 30-40%",
+        "Grow Guntur Sannam or Byadagi variety for national/export premium market price",
+        "Dry on raised platforms (not ground) for Grade-A quality and 15-20% better price"
+      ],
+      "low_cost_tips_hi": [
+        "जैव-कीटनाशक (नीम तेल, ब्यूवेरिया बासियाना) से कीटनाशक लागत 30-40% कम",
+        "प्रीमियम बाजार के लिए गुंटूर सन्नम या ब्यादगी किस्म उगाएं",
+        "जमीन पर नहीं, ऊंचे मंच पर सुखाएं — ग्रेड-A गुणवत्ता और 15-20% बेहतर मूल्य"
+      ]
+    }
+  }
+}

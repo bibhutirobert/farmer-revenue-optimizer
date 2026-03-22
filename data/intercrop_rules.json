@@ -1,0 +1,147 @@
+{
+  "rules": [
+    {
+      "primary_crop": "rice",
+      "companion_crop": "moong",
+      "companion_name_en": "Green Gram (Moong)",
+      "companion_name_hi": "मूंग",
+      "benefit_en": "Grow moong on bunds and field borders. Fixes nitrogen (saves Rs. 800-1200 on fertilizer next season). Yields 1-2 quintal/acre as bonus cash within 60 days.",
+      "benefit_hi": "मेड़ और खेत की सीमाओं पर मूंग उगाएं। नाइट्रोजन स्थिरीकरण (अगले मौसम Rs. 800-1200 बचत)। 60 दिनों में 1-2 क्विंटल/एकड़ बोनस आय।",
+      "row_ratio": "Main field + border rows",
+      "seasons": ["kharif"],
+      "revenue_uplift_percent": 20
+    },
+    {
+      "primary_crop": "wheat",
+      "companion_crop": "mustard",
+      "companion_name_en": "Mustard (Border Rows)",
+      "companion_name_hi": "सरसों (सीमा पंक्तियां)",
+      "benefit_en": "Plant 2 mustard rows at field borders. Mustard repels aphids naturally, protecting wheat without extra pesticide. Yields 1-2 qtl/acre of mustard at Rs. 5650/qtl MSP.",
+      "benefit_hi": "खेत की सीमा पर 2 सरसों पंक्तियां। सरसों एफिड्स को प्राकृतिक रूप से दूर रखती है। 1-2 क्विंटल/एकड़ सरसों MSP Rs. 5650/qtl पर।",
+      "row_ratio": "2 border rows of mustard",
+      "seasons": ["rabi"],
+      "revenue_uplift_percent": 18
+    },
+    {
+      "primary_crop": "cotton",
+      "companion_crop": "moong",
+      "companion_name_en": "Green Gram (Moong)",
+      "companion_name_hi": "मूंग",
+      "benefit_en": "Plant moong in cotton inter-rows at 1:6 ratio. Moong matures in 60 days before cotton canopy closes. Provides nitrogen and early cash flow of Rs. 3000-5000/acre.",
+      "benefit_hi": "1:6 अनुपात में कपास की अंतर-पंक्तियों में मूंग। 60 दिनों में पकती है, Rs. 3000-5000/एकड़ की शुरुआती नकद आय।",
+      "row_ratio": "1:6 (moong:cotton rows)",
+      "seasons": ["kharif"],
+      "revenue_uplift_percent": 25
+    },
+    {
+      "primary_crop": "maize",
+      "companion_crop": "soybean",
+      "companion_name_en": "Soybean",
+      "companion_name_hi": "सोयाबीन",
+      "benefit_en": "Classic 3:1 maize-soybean system. Soybean fixes nitrogen for maize, increasing total system productivity by 30-40% over monocropping. Land Equivalent Ratio > 1.4.",
+      "benefit_hi": "क्लासिक 3:1 मक्का-सोयाबीन प्रणाली। सोयाबीन मक्के के लिए नाइट्रोजन स्थिर करती है — LER > 1.4, 30-40% अधिक उत्पादकता।",
+      "row_ratio": "3:1 (maize:soybean rows)",
+      "seasons": ["kharif"],
+      "revenue_uplift_percent": 35
+    },
+    {
+      "primary_crop": "maize",
+      "companion_crop": "moong",
+      "companion_name_en": "Green Gram (Moong)",
+      "companion_name_hi": "मूंग",
+      "benefit_en": "Plant moong between maize rows at 3:1 ratio. Moong harvested at 60 days before maize canopy closes. Total income 20-25% higher than sole maize.",
+      "benefit_hi": "3:1 अनुपात में मक्के की पंक्तियों के बीच मूंग। 60 दिन में कटाई। कुल आय एकल मक्के से 20-25% अधिक।",
+      "row_ratio": "3:1 (maize:moong rows)",
+      "seasons": ["kharif", "zaid"],
+      "revenue_uplift_percent": 22
+    },
+    {
+      "primary_crop": "soybean",
+      "companion_crop": "maize",
+      "companion_name_en": "Maize (Windbreak Rows)",
+      "companion_name_hi": "मक्का (पवन-अवरोधक पंक्तियां)",
+      "benefit_en": "2 rows of maize every 6 rows of soybean. Maize acts as windbreak and fetches Rs. 5000-6000/acre extra income. Classic Madhya Pradesh system.",
+      "benefit_hi": "हर 6 सोयाबीन पंक्तियों पर 2 मक्का पंक्तियां। मक्का पवन-अवरोधक का काम करती है और Rs. 5000-6000/एकड़ अतिरिक्त आय।",
+      "row_ratio": "6:2 (soybean:maize rows)",
+      "seasons": ["kharif"],
+      "revenue_uplift_percent": 28
+    },
+    {
+      "primary_crop": "sugarcane",
+      "companion_crop": "wheat",
+      "companion_name_en": "Wheat (Inter-row, Oct-Mar)",
+      "companion_name_hi": "गेहूं (अंतर-पंक्ति, अक्टूबर-मार्च)",
+      "benefit_en": "Sow wheat in sugarcane inter-rows October-November. Harvest wheat before cane canopy closes in March. Yields Rs. 20000-30000/acre extra with near-zero additional cost.",
+      "benefit_hi": "अक्टूबर-नवंबर में गन्ने की अंतर-पंक्तियों में गेहूं। मार्च में कटाई। लगभग शून्य अतिरिक्त लागत में Rs. 20000-30000/एकड़ अतिरिक्त आय।",
+      "row_ratio": "Sow in cane inter-rows",
+      "seasons": ["annual"],
+      "revenue_uplift_percent": 40
+    },
+    {
+      "primary_crop": "sugarcane",
+      "companion_crop": "garlic",
+      "companion_name_en": "Garlic (Inter-row, Oct-Feb)",
+      "companion_name_hi": "लहसुन (अंतर-पंक्ति, अक्टूबर-फरवरी)",
+      "benefit_en": "Garlic planted in October in cane inter-rows. Garlic naturally repels aphids in cane and fetches Rs. 25000-40000/acre at 20-30 qtl/acre yield. Most profitable sugarcane intercrop.",
+      "benefit_hi": "अक्टूबर में गन्ने की अंतर-पंक्तियों में लहसुन। लहसुन एफिड्स दूर करता है और 20-30 क्विंटल/एकड़ पर Rs. 25000-40000/एकड़ अतिरिक्त आय।",
+      "row_ratio": "Plant in every inter-row",
+      "seasons": ["annual"],
+      "revenue_uplift_percent": 55
+    },
+    {
+      "primary_crop": "groundnut",
+      "companion_crop": "bajra",
+      "companion_name_en": "Pearl Millet (Bajra)",
+      "companion_name_hi": "बाजरा",
+      "benefit_en": "Traditional Deccan intercrop at 6:2 ratio (groundnut:bajra). Bajra rows act as windbreak, reducing transpiration stress. 20-25% higher combined income than groundnut alone.",
+      "benefit_hi": "पारंपरिक डेक्कन अंतरफसल 6:2 अनुपात। बाजरा पंक्तियां वाष्पोत्सर्जन तनाव कम करती हैं। एकल मूंगफली से 20-25% अधिक संयुक्त आय।",
+      "row_ratio": "6:2 (groundnut:bajra)",
+      "seasons": ["kharif"],
+      "revenue_uplift_percent": 22
+    },
+    {
+      "primary_crop": "jowar",
+      "companion_crop": "red_gram",
+      "companion_name_en": "Red Gram (Arhar / Pigeon Pea)",
+      "companion_name_hi": "लाल अरहर (तूर दाल)",
+      "benefit_en": "Plant arhar at 2:1 with jowar. Arhar is a long-duration crop (5-6 months); after jowar harvest the arhar continues and fixes nitrogen for next season. Combined income 40% higher.",
+      "benefit_hi": "2:1 अनुपात में अरहर और ज्वार। अरहर लंबी अवधि (5-6 माह); ज्वार कटाई के बाद अरहर जारी रहती है और अगले मौसम के लिए नाइट्रोजन स्थिर करती है। 40% अधिक संयुक्त आय।",
+      "row_ratio": "2:1 (jowar:arhar rows)",
+      "seasons": ["kharif"],
+      "revenue_uplift_percent": 40
+    },
+    {
+      "primary_crop": "bajra",
+      "companion_crop": "cowpea",
+      "companion_name_en": "Cowpea (Lobia)",
+      "companion_name_hi": "लोबिया",
+      "benefit_en": "Plant cowpea at 2:1 ratio with bajra. Cowpea is drought tolerant like bajra. It fixes nitrogen and can be sold as vegetable or dried pulse — Rs. 3000-5000/acre additional income.",
+      "benefit_hi": "2:1 अनुपात में लोबिया और बाजरा। लोबिया सूखा-सहिष्णु है, नाइट्रोजन स्थिर करती है। Rs. 3000-5000/एकड़ अतिरिक्त आय।",
+      "row_ratio": "2:1 (bajra:cowpea)",
+      "seasons": ["kharif"],
+      "revenue_uplift_percent": 25
+    },
+    {
+      "primary_crop": "turmeric",
+      "companion_crop": "banana",
+      "companion_name_en": "Banana (Shade Intercrop)",
+      "companion_name_hi": "केला (छाया अंतरफसल)",
+      "benefit_en": "Plant banana at 8x8 ft on ridges; turmeric in furrows. Banana provides 40-50% shade that turmeric needs, banana bunch fetches Rs. 15000-20000/acre, and turmeric yield improves under shade.",
+      "benefit_hi": "मेड़ों पर 8x8 फीट पर केला; नालियों में हल्दी। केला 40-50% छाया देता है। केले के गुच्छे Rs. 15000-20000/एकड़। छाया में हल्दी की उपज बेहतर।",
+      "row_ratio": "8x8 ft banana; furrows for turmeric",
+      "seasons": ["kharif"],
+      "revenue_uplift_percent": 50
+    },
+    {
+      "primary_crop": "mustard",
+      "companion_crop": "chickpea",
+      "companion_name_en": "Chickpea (Chana)",
+      "companion_name_hi": "चना",
+      "benefit_en": "Plant chickpea at 6:2 ratio with mustard. Chickpea fixes nitrogen (reducing fertilizer need for mustard), and both crops are low water consumers. Combined income 30% higher than sole mustard.",
+      "benefit_hi": "6:2 अनुपात में चना और सरसों। चना नाइट्रोजन स्थिर करता है, दोनों कम पानी वाली फसलें। एकल सरसों से 30% अधिक आय।",
+      "row_ratio": "6:2 (mustard:chickpea)",
+      "seasons": ["rabi"],
+      "revenue_uplift_percent": 30
+    }
+  ]
+}
