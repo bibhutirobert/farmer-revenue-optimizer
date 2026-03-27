@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
 
 
@@ -12,6 +12,11 @@ class FarmInput:
     season: str
     lat: Optional[float] = None
     lng: Optional[float] = None
+    # Geo-intelligence fields (auto-populated from soil_service)
+    soil_type: Optional[str] = None        # soil_code e.g. "black", "alluvial"
+    soil_name: Optional[str] = None        # human-readable e.g. "Black Cotton Soil"
+    climate_zone: Optional[str] = None     # e.g. "Tropical Semi-Arid"
+    # Cost overrides (optional, user-supplied)
     seed_cost: Optional[float] = None
     fertilizer_cost: Optional[float] = None
     pesticide_cost: Optional[float] = None
@@ -62,3 +67,10 @@ class RecommendationResult:
     risk_flag: bool
     price_per_quintal: float
     price_type: str
+    # V3 additions — price provenance
+    price_source: str = "default"          # "live" | "cache" | "default"
+    price_updated_at: str = "hardcoded"    # ISO date or "hardcoded"
+    # V3 additions — geo-intelligence
+    soil_code: str = "unknown"
+    soil_name_en: str = ""
+    climate_zone: str = ""
