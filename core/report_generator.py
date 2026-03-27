@@ -71,6 +71,33 @@ class FarmReport(FPDF):
         else:
             self.set_font("Helvetica", style, size)
 
+    def _safe(self, text: str) -> str:
+        """
+        Sanitize text for Helvetica (Latin-1 only).
+        Replaces common Unicode characters that break Helvetica rendering.
+        Only applied when DejaVu font is NOT loaded.
+        When DejaVu IS loaded, text passes through unchanged.
+        """
+        if self._unicode_loaded:
+            return text
+        replacements = {
+            "—": "-",   # em-dash — -> -
+            "–": "-",   # en-dash – -> -
+            "‘": "'",   # left single quote
+            "’": "'",   # right single quote / apostrophe
+            "“": '"',  # left double quote
+            "”": '"',  # right double quote
+            "•": "-",   # bullet •
+            "₹": "Rs.", # rupee symbol ₹
+            "…": "...", # ellipsis …
+            "×": "x",   # multiplication sign ×
+            "é": "e",   # e with accent
+        }
+        for char, replacement in replacements.items():
+            text = text.replace(char, replacement)
+        # Final safety: encode to latin-1, replacing anything still unmappable
+        return text.encode("latin-1", errors="replace").decode("latin-1")
+
     def header(self):
         self.set_fill_color(*COLOR_MID_GREEN)
         self.rect(0, 0, 210, 22, "F")
@@ -99,14 +126,14 @@ class FarmReport(FPDF):
     def body_text(self, text: str, size: int = 10):
         self._font("", size)
         self.set_text_color(*COLOR_DARK_GRAY)
-        self.multi_cell(0, 6, text)
+        self.multi_cell(0, 6, self._safe(text))
         self.ln(1)
 
     def bullet(self, text: str):
         self._font("", 9)
         self.set_x(20)
         self.set_text_color(*COLOR_DARK_GRAY)
-        self.multi_cell(0, 5.5, f"- {text}")
+        self.multi_cell(0, 5.5, self._safe(f"- {text}"))
 
     def kpi_row(self, label: str, value: str, color=COLOR_DARK_GREEN):
         self._font("B", 11)
