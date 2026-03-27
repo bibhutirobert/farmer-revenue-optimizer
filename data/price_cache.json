@@ -1,0 +1,22 @@
+{
+  "_note": "Admin-editable price cache. Update prices here without touching any code. Set updated_at to today's date when you refresh. Resolver uses this as Tier 2 (before hardcoded defaults).",
+  "_instructions": "To update: change price_per_quintal for the crop, set updated_at to YYYY-MM-DD format, set source to 'cache'.",
+  "last_full_refresh": "2024-03-01",
+  "prices": {
+    "rice":      { "price_per_quintal": 2183, "price_type": "msp",    "source": "cache", "updated_at": "2024-03-01", "notes": "MSP 2023-24 Kharif" },
+    "wheat":     { "price_per_quintal": 2275, "price_type": "msp",    "source": "cache", "updated_at": "2024-03-01", "notes": "MSP 2023-24 Rabi" },
+    "cotton":    { "price_per_quintal": 6620, "price_type": "msp",    "source": "cache", "updated_at": "2024-03-01", "notes": "MSP 2023-24 Medium staple" },
+    "sugarcane": { "price_per_quintal": 340,  "price_type": "frp",    "source": "cache", "updated_at": "2024-03-01", "notes": "FRP 2023-24" },
+    "maize":     { "price_per_quintal": 2090, "price_type": "msp",    "source": "cache", "updated_at": "2024-03-01", "notes": "MSP 2023-24 Kharif" },
+    "soybean":   { "price_per_quintal": 4600, "price_type": "msp",    "source": "cache", "updated_at": "2024-03-01", "notes": "MSP 2023-24 Kharif" },
+    "groundnut": { "price_per_quintal": 6377, "price_type": "msp",    "source": "cache", "updated_at": "2024-03-01", "notes": "MSP 2023-24 Kharif" },
+    "mustard":   { "price_per_quintal": 5650, "price_type": "msp",    "source": "cache", "updated_at": "2024-03-01", "notes": "MSP 2023-24 Rabi" },
+    "jowar":     { "price_per_quintal": 3180, "price_type": "msp",    "source": "cache", "updated_at": "2024-03-01", "notes": "MSP 2023-24 Kharif" },
+    "bajra":     { "price_per_quintal": 2500, "price_type": "msp",    "source": "cache", "updated_at": "2024-03-01", "notes": "MSP 2023-24 Kharif" },
+    "onion":     { "price_per_quintal": 2000, "price_type": "market", "source": "cache", "updated_at": "2024-03-01", "notes": "Conservative market avg" },
+    "tomato":    { "price_per_quintal": 1500, "price_type": "market", "source": "cache", "updated_at": "2024-03-01", "notes": "Conservative market avg" },
+    "potato":    { "price_per_quintal": 1000, "price_type": "market", "source": "cache", "updated_at": "2024-03-01", "notes": "Conservative market avg" },
+    "turmeric":  { "price_per_quintal": 8000, "price_type": "market", "source": "cache", "updated_at": "2024-03-01", "notes": "Mid-range market est." },
+    "chilli":    { "price_per_quintal": 12000,"price_type": "market", "source": "cache", "updated_at": "2024-03-01", "notes": "Conservative market avg" }
+  }
+}

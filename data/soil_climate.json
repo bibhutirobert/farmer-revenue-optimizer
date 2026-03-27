@@ -1,0 +1,375 @@
+{
+  "_note": "Dominant soil type and agro-climatic zone per Indian state. Used as fallback when real-time soil API is unavailable. Source: ICAR Agro-climatic zones, NBSS&LUP soil classification.",
+  "states": {
+    "Andhra Pradesh": {
+      "dominant_soil": "Red and Laterite",
+      "soil_code": "red_laterite",
+      "climate_zone": "Tropical Semi-Arid",
+      "rainfall_category": "medium",
+      "temp_zone": "hot",
+      "primary_kharif": ["rice", "cotton", "maize"],
+      "primary_rabi": ["wheat", "groundnut", "chilli"],
+      "agro_notes_en": "Coastal plains have alluvial soil; Rayalaseema is arid with red soil. Delta regions support intensive rice cultivation.",
+      "agro_notes_hi": "तटीय मैदानों में जलोढ़ मिट्टी; रायलसीमा में लाल मिट्टी। डेल्टा क्षेत्र गहन धान खेती के लिए उपयुक्त।"
+    },
+    "Arunachal Pradesh": {
+      "dominant_soil": "Forest and Hill",
+      "soil_code": "forest_hill",
+      "climate_zone": "Humid Sub-Tropical",
+      "rainfall_category": "very_high",
+      "temp_zone": "cool",
+      "primary_kharif": ["rice", "maize"],
+      "primary_rabi": ["wheat"],
+      "agro_notes_en": "High rainfall, acidic forest soils. Terraced farming common. Limited commercial crop options.",
+      "agro_notes_hi": "अधिक वर्षा, अम्लीय वन मिट्टी। सीढ़ीनुमा खेती प्रचलित। सीमित व्यावसायिक फसल विकल्प।"
+    },
+    "Assam": {
+      "dominant_soil": "Alluvial",
+      "soil_code": "alluvial",
+      "climate_zone": "Humid Sub-Tropical",
+      "rainfall_category": "very_high",
+      "temp_zone": "warm",
+      "primary_kharif": ["rice", "jute", "maize"],
+      "primary_rabi": ["mustard", "wheat"],
+      "agro_notes_en": "Brahmaputra valley alluvial soil is highly fertile. Tea cultivation dominates hill areas. Flood management critical.",
+      "agro_notes_hi": "ब्रह्मपुत्र घाटी की जलोढ़ मिट्टी अत्यंत उपजाऊ। पहाड़ी क्षेत्रों में चाय की खेती। बाढ़ प्रबंधन महत्वपूर्ण।"
+    },
+    "Bihar": {
+      "dominant_soil": "Alluvial",
+      "soil_code": "alluvial",
+      "climate_zone": "Sub-Tropical",
+      "rainfall_category": "medium",
+      "temp_zone": "warm",
+      "primary_kharif": ["rice", "maize", "sugarcane"],
+      "primary_rabi": ["wheat", "mustard", "potato"],
+      "agro_notes_en": "Indo-Gangetic alluvial plain, among India's most fertile zones. North Bihar prone to floods; south Bihar more drought-prone.",
+      "agro_notes_hi": "इंडो-गंगेटिक जलोढ़ मैदान, भारत के सबसे उपजाऊ क्षेत्रों में। उत्तर बिहार बाढ़ प्रवण; दक्षिण बिहार सूखा प्रवण।"
+    },
+    "Chhattisgarh": {
+      "dominant_soil": "Red and Yellow",
+      "soil_code": "red_yellow",
+      "climate_zone": "Tropical Sub-Humid",
+      "rainfall_category": "medium_high",
+      "temp_zone": "hot",
+      "primary_kharif": ["rice", "maize", "soybean"],
+      "primary_rabi": ["wheat", "chickpea"],
+      "agro_notes_en": "Rice bowl of central India. Bastar plateau has laterite soil. Chhattisgarh plain has red-yellow soil supporting paddy.",
+      "agro_notes_hi": "मध्य भारत का चावल कटोरा। बस्तर पठार में लैटेराइट मिट्टी। छत्तीसगढ़ मैदान में लाल-पीली मिट्टी।"
+    },
+    "Goa": {
+      "dominant_soil": "Laterite",
+      "soil_code": "laterite",
+      "climate_zone": "Tropical Wet",
+      "rainfall_category": "very_high",
+      "temp_zone": "hot",
+      "primary_kharif": ["rice", "sugarcane"],
+      "primary_rabi": ["vegetables"],
+      "agro_notes_en": "High rainfall, laterite soil low in nutrients. Cashew and coconut dominant. Limited cereal farming.",
+      "agro_notes_hi": "अधिक वर्षा, पोषक तत्वों में कम लैटेराइट मिट्टी। काजू और नारियल प्रमुख। सीमित अनाज खेती।"
+    },
+    "Gujarat": {
+      "dominant_soil": "Black (Regur)",
+      "soil_code": "black",
+      "climate_zone": "Tropical Semi-Arid",
+      "rainfall_category": "low_medium",
+      "temp_zone": "hot",
+      "primary_kharif": ["cotton", "groundnut", "bajra"],
+      "primary_rabi": ["wheat", "mustard", "chickpea"],
+      "agro_notes_en": "Black cotton soil in Saurashtra and north Gujarat. Rann of Kutch is arid. Canal irrigation from Narmada Dam is transforming agriculture.",
+      "agro_notes_hi": "सौराष्ट्र और उत्तर गुजरात में काली कपास मिट्टी। कच्छ का रण शुष्क है। नर्मदा बांध से नहर सिंचाई कृषि को बदल रही है।"
+    },
+    "Haryana": {
+      "dominant_soil": "Alluvial",
+      "soil_code": "alluvial",
+      "climate_zone": "Semi-Arid",
+      "rainfall_category": "low_medium",
+      "temp_zone": "warm",
+      "primary_kharif": ["rice", "bajra", "cotton"],
+      "primary_rabi": ["wheat", "mustard"],
+      "agro_notes_en": "Indo-Gangetic alluvial soil, highly productive under irrigation. Among India's top wheat and rice producing states. Water table declining in many districts.",
+      "agro_notes_hi": "इंडो-गंगेटिक जलोढ़ मिट्टी, सिंचाई में अत्यधिक उत्पादक। गेहूं और चावल के शीर्ष उत्पादक राज्यों में। कई जिलों में भूजल स्तर गिर रहा है।"
+    },
+    "Himachal Pradesh": {
+      "dominant_soil": "Mountain and Forest",
+      "soil_code": "mountain_forest",
+      "climate_zone": "Sub-Temperate",
+      "rainfall_category": "medium_high",
+      "temp_zone": "cool",
+      "primary_kharif": ["maize", "rice"],
+      "primary_rabi": ["wheat", "potato"],
+      "agro_notes_en": "Varied soil from mountain to valley. Apple and other horticulture dominant in higher altitudes. Potato cultivation in mid-hills.",
+      "agro_notes_hi": "पहाड़ से घाटी तक विविध मिट्टी। ऊंचाई पर सेब और बागवानी प्रमुख। मध्य पहाड़ियों में आलू की खेती।"
+    },
+    "Jharkhand": {
+      "dominant_soil": "Red and Laterite",
+      "soil_code": "red_laterite",
+      "climate_zone": "Tropical Sub-Humid",
+      "rainfall_category": "medium_high",
+      "temp_zone": "warm",
+      "primary_kharif": ["rice", "maize"],
+      "primary_rabi": ["wheat", "mustard"],
+      "agro_notes_en": "Chota Nagpur plateau with red laterite soil. Tribal farming areas. Limited irrigation; mostly rainfed agriculture.",
+      "agro_notes_hi": "लाल लैटेराइट मिट्टी के साथ छोटा नागपुर पठार। जनजातीय कृषि क्षेत्र। सीमित सिंचाई; अधिकतर वर्षाश्रित खेती।"
+    },
+    "Karnataka": {
+      "dominant_soil": "Red Loamy",
+      "soil_code": "red_loamy",
+      "climate_zone": "Tropical Semi-Arid to Wet",
+      "rainfall_category": "medium_high",
+      "temp_zone": "warm",
+      "primary_kharif": ["rice", "maize", "jowar", "cotton"],
+      "primary_rabi": ["wheat", "sunflower", "chickpea"],
+      "agro_notes_en": "Highly diverse agro-ecology. Coastal Karnataka wet; North Karnataka semi-arid. Major sugar, coffee, silk, and sunflower producer.",
+      "agro_notes_hi": "अत्यंत विविध कृषि-पारिस्थितिकी। तटीय कर्नाटक आर्द्र; उत्तर कर्नाटक अर्ध-शुष्क। प्रमुख चीनी, कॉफी, रेशम, सूरजमुखी उत्पादक।"
+    },
+    "Kerala": {
+      "dominant_soil": "Laterite and Alluvial",
+      "soil_code": "laterite",
+      "climate_zone": "Tropical Wet",
+      "rainfall_category": "very_high",
+      "temp_zone": "hot",
+      "primary_kharif": ["rice", "sugarcane"],
+      "primary_rabi": ["vegetables", "banana"],
+      "agro_notes_en": "Two monsoon seasons. Laterite soil on hills; alluvial in valleys. Spices, coconut, rubber, and banana dominate. Rice cultivation declining.",
+      "agro_notes_hi": "दो मानसून मौसम। पहाड़ियों पर लैटेराइट; घाटियों में जलोढ़। मसाले, नारियल, रबर, केला प्रमुख। धान की खेती घट रही है।"
+    },
+    "Madhya Pradesh": {
+      "dominant_soil": "Black (Regur)",
+      "soil_code": "black",
+      "climate_zone": "Tropical Sub-Humid",
+      "rainfall_category": "medium",
+      "temp_zone": "warm",
+      "primary_kharif": ["soybean", "maize", "cotton"],
+      "primary_rabi": ["wheat", "chickpea", "mustard"],
+      "agro_notes_en": "Malwa plateau black soil is highly productive. MP is India's top soybean and chickpea producer. Narmada valley is fertile.",
+      "agro_notes_hi": "मालवा पठार की काली मिट्टी अत्यधिक उत्पादक। MP भारत में सोयाबीन और चने का शीर्ष उत्पादक। नर्मदा घाटी उपजाऊ।"
+    },
+    "Maharashtra": {
+      "dominant_soil": "Black (Regur)",
+      "soil_code": "black",
+      "climate_zone": "Tropical Semi-Arid",
+      "rainfall_category": "low_medium",
+      "temp_zone": "hot",
+      "primary_kharif": ["cotton", "soybean", "sugarcane"],
+      "primary_rabi": ["wheat", "chickpea", "onion"],
+      "agro_notes_en": "Deccan plateau black soil ideal for cotton and soybean. Vidarbha drought-prone. Konkan coast receives heavy rainfall. Sugar belt in Pune-Kolhapur.",
+      "agro_notes_hi": "दक्कन पठार की काली मिट्टी कपास और सोयाबीन के लिए आदर्श। विदर्भ सूखा प्रवण। कोंकण तट पर भारी वर्षा। पुणे-कोल्हापुर में चीनी पेटी।"
+    },
+    "Manipur": {
+      "dominant_soil": "Forest and Hill",
+      "soil_code": "forest_hill",
+      "climate_zone": "Humid Sub-Tropical",
+      "rainfall_category": "high",
+      "temp_zone": "warm",
+      "primary_kharif": ["rice", "maize"],
+      "primary_rabi": ["mustard"],
+      "agro_notes_en": "Imphal valley alluvial; hills have forest soil. Rice dominant crop. Traditional jhum cultivation in hill areas.",
+      "agro_notes_hi": "इम्फाल घाटी जलोढ़; पहाड़ियों में वन मिट्टी। धान प्रमुख फसल। पहाड़ी क्षेत्रों में पारंपरिक झूम खेती।"
+    },
+    "Meghalaya": {
+      "dominant_soil": "Forest and Laterite",
+      "soil_code": "forest_hill",
+      "climate_zone": "Humid Tropical",
+      "rainfall_category": "very_high",
+      "temp_zone": "cool",
+      "primary_kharif": ["rice", "maize"],
+      "primary_rabi": ["potato"],
+      "agro_notes_en": "Cherrapunji among wettest places on earth. Acidic soil. Ginger, turmeric, and areca nut are significant cash crops.",
+      "agro_notes_hi": "चेरापूंजी पृथ्वी के सबसे आर्द्र स्थानों में। अम्लीय मिट्टी। अदरक, हल्दी, सुपारी महत्वपूर्ण नकदी फसलें।"
+    },
+    "Mizoram": {
+      "dominant_soil": "Forest and Hill",
+      "soil_code": "forest_hill",
+      "climate_zone": "Humid Sub-Tropical",
+      "rainfall_category": "very_high",
+      "temp_zone": "warm",
+      "primary_kharif": ["rice", "maize"],
+      "primary_rabi": ["mustard"],
+      "agro_notes_en": "Hilly terrain with forest soil. Traditional jhum cultivation. Horticulture increasingly important.",
+      "agro_notes_hi": "वन मिट्टी के साथ पहाड़ी इलाका। पारंपरिक झूम खेती। बागवानी बढ़ती महत्वपूर्ण।"
+    },
+    "Nagaland": {
+      "dominant_soil": "Forest and Hill",
+      "soil_code": "forest_hill",
+      "climate_zone": "Humid Sub-Tropical",
+      "rainfall_category": "high",
+      "temp_zone": "warm",
+      "primary_kharif": ["rice", "maize"],
+      "primary_rabi": ["mustard"],
+      "agro_notes_en": "Terraced hill farming. Naga chilli (ghost pepper) is a globally significant cash crop. Limited flat land.",
+      "agro_notes_hi": "सीढ़ीनुमा पहाड़ी खेती। नागा मिर्च (भूत जोलोकिया) विश्व स्तर पर महत्वपूर्ण नकदी फसल।"
+    },
+    "Odisha": {
+      "dominant_soil": "Red and Laterite",
+      "soil_code": "red_laterite",
+      "climate_zone": "Tropical Sub-Humid",
+      "rainfall_category": "medium_high",
+      "temp_zone": "hot",
+      "primary_kharif": ["rice", "maize"],
+      "primary_rabi": ["mustard", "chickpea"],
+      "agro_notes_en": "Coastal alluvial for rice; central and western red-laterite. Cyclone-prone coast. Turmeric and ginger grown in tribal areas.",
+      "agro_notes_hi": "चावल के लिए तटीय जलोढ़; मध्य और पश्चिमी लाल-लैटेराइट। चक्रवात प्रवण तट। जनजातीय क्षेत्रों में हल्दी और अदरक।"
+    },
+    "Punjab": {
+      "dominant_soil": "Alluvial",
+      "soil_code": "alluvial",
+      "climate_zone": "Semi-Arid",
+      "rainfall_category": "low",
+      "temp_zone": "warm",
+      "primary_kharif": ["rice", "cotton", "bajra"],
+      "primary_rabi": ["wheat", "mustard"],
+      "agro_notes_en": "India's granary. Deep fertile alluvial soil. Intensive canal and tubewell irrigation. Water table critically declining. Wheat-rice rotation dominant but ecologically costly.",
+      "agro_notes_hi": "भारत का अन्न भंडार। गहरी उपजाऊ जलोढ़ मिट्टी। गहन नहर और ट्यूबवेल सिंचाई। भूजल स्तर गंभीर रूप से घट रहा है। गेहूं-धान चक्र प्रमुख।"
+    },
+    "Rajasthan": {
+      "dominant_soil": "Arid Sandy",
+      "soil_code": "arid_sandy",
+      "climate_zone": "Arid to Semi-Arid",
+      "rainfall_category": "very_low",
+      "temp_zone": "very_hot",
+      "primary_kharif": ["bajra", "jowar", "groundnut"],
+      "primary_rabi": ["mustard", "chickpea", "wheat"],
+      "agro_notes_en": "Thar desert dominates. Eastern Rajasthan more productive. Indira Gandhi Canal transformed northwest agriculture. Drought and water scarcity are constant challenges.",
+      "agro_notes_hi": "थार मरुस्थल प्रभावी। पूर्वी राजस्थान अधिक उत्पादक। इंदिरा गांधी नहर ने उत्तर-पश्चिम कृषि को बदला। सूखा और जल की कमी निरंतर चुनौती।"
+    },
+    "Sikkim": {
+      "dominant_soil": "Mountain Forest",
+      "soil_code": "mountain_forest",
+      "climate_zone": "Sub-Temperate",
+      "rainfall_category": "high",
+      "temp_zone": "cool",
+      "primary_kharif": ["maize", "rice"],
+      "primary_rabi": ["wheat", "potato"],
+      "agro_notes_en": "India's first fully organic state. Cardamom is the major cash crop. Terraced farming on steep slopes.",
+      "agro_notes_hi": "भारत का पहला पूर्ण जैविक राज्य। इलायची प्रमुख नकदी फसल। खड़ी ढलानों पर सीढ़ीनुमा खेती।"
+    },
+    "Tamil Nadu": {
+      "dominant_soil": "Red Loamy and Alluvial",
+      "soil_code": "red_loamy",
+      "climate_zone": "Tropical Semi-Arid",
+      "rainfall_category": "medium",
+      "temp_zone": "hot",
+      "primary_kharif": ["rice", "maize", "cotton"],
+      "primary_rabi": ["groundnut", "sugarcane", "chilli"],
+      "agro_notes_en": "Cauvery delta is major rice zone. Coimbatore plateau for cotton. Northeast monsoon is primary rainfall source. Banana and turmeric in southern districts.",
+      "agro_notes_hi": "कावेरी डेल्टा प्रमुख चावल क्षेत्र। कोयंबटूर पठार कपास के लिए। उत्तर-पूर्व मानसून प्राथमिक वर्षा स्रोत।"
+    },
+    "Telangana": {
+      "dominant_soil": "Red and Black Mixed",
+      "soil_code": "red_black_mixed",
+      "climate_zone": "Tropical Semi-Arid",
+      "rainfall_category": "medium",
+      "temp_zone": "hot",
+      "primary_kharif": ["rice", "cotton", "maize", "chilli"],
+      "primary_rabi": ["jowar", "sunflower"],
+      "agro_notes_en": "Red soil in uplands, black in lowlands. Major cotton, chilli, and turmeric producer. Godavari and Krishna delta rice cultivation.",
+      "agro_notes_hi": "ऊपरी भूमि में लाल, निचली भूमि में काली मिट्टी। प्रमुख कपास, मिर्च और हल्दी उत्पादक।"
+    },
+    "Tripura": {
+      "dominant_soil": "Alluvial and Laterite",
+      "soil_code": "red_laterite",
+      "climate_zone": "Humid Sub-Tropical",
+      "rainfall_category": "high",
+      "temp_zone": "warm",
+      "primary_kharif": ["rice", "jute"],
+      "primary_rabi": ["mustard", "wheat"],
+      "agro_notes_en": "Valley alluvial soil for rice. Rubber and pineapple growing in importance. Limited arable flat land.",
+      "agro_notes_hi": "चावल के लिए घाटी की जलोढ़ मिट्टी। रबर और अनानास बढ़ते महत्व के। सीमित कृषि योग्य समतल भूमि।"
+    },
+    "Uttar Pradesh": {
+      "dominant_soil": "Alluvial",
+      "soil_code": "alluvial",
+      "climate_zone": "Sub-Tropical",
+      "rainfall_category": "medium",
+      "temp_zone": "warm",
+      "primary_kharif": ["rice", "sugarcane", "maize"],
+      "primary_rabi": ["wheat", "mustard", "potato"],
+      "agro_notes_en": "Largest agricultural state. Deep fertile Gangetic alluvial soil. Sugarcane belt in western UP. Major wheat, rice, potato, and onion producer.",
+      "agro_notes_hi": "सबसे बड़ा कृषि राज्य। गहरी उपजाऊ गंगा जलोढ़ मिट्टी। पश्चिमी UP में गन्ना पेटी। प्रमुख गेहूं, धान, आलू, प्याज उत्पादक।"
+    },
+    "Uttarakhand": {
+      "dominant_soil": "Mountain and Alluvial",
+      "soil_code": "mountain_forest",
+      "climate_zone": "Sub-Temperate to Temperate",
+      "rainfall_category": "medium_high",
+      "temp_zone": "cool",
+      "primary_kharif": ["rice", "maize"],
+      "primary_rabi": ["wheat", "mustard"],
+      "agro_notes_en": "Terai (foothills) zone is fertile alluvial. Hill areas have thin mountain soil. Basmati rice in Dehradun valley. Horticulture in hills.",
+      "agro_notes_hi": "तराई क्षेत्र उपजाऊ जलोढ़। पहाड़ी क्षेत्रों में पतली पर्वतीय मिट्टी। देहरादून घाटी में बासमती चावल।"
+    },
+    "West Bengal": {
+      "dominant_soil": "Alluvial",
+      "soil_code": "alluvial",
+      "climate_zone": "Tropical Wet",
+      "rainfall_category": "high",
+      "temp_zone": "hot",
+      "primary_kharif": ["rice", "jute", "maize"],
+      "primary_rabi": ["mustard", "potato", "wheat"],
+      "agro_notes_en": "Gangetic delta highly fertile. India's top rice and jute producer. Multiple rice crops possible. Potato cultivation in winter common.",
+      "agro_notes_hi": "गंगा डेल्टा अत्यधिक उपजाऊ। भारत में चावल और जूट का शीर्ष उत्पादक। कई चावल फसलें संभव। सर्दियों में आलू की खेती सामान्य।"
+    }
+  },
+  "soil_descriptions": {
+    "alluvial": {
+      "name_en": "Alluvial Soil",
+      "name_hi": "जलोढ़ मिट्टी",
+      "description_en": "Fertile, deep soil deposited by rivers. Rich in potassium and phosphoric acid. Excellent for most crops.",
+      "description_hi": "नदियों द्वारा जमा उपजाऊ, गहरी मिट्टी। पोटेशियम और फॉस्फोरिक एसिड से भरपूर। अधिकांश फसलों के लिए उत्कृष्ट।"
+    },
+    "black": {
+      "name_en": "Black Cotton Soil (Regur)",
+      "name_hi": "काली कपास मिट्टी (रेगुर)",
+      "description_en": "High clay content, swells when wet, cracks when dry. Excellent water retention. Best for cotton, soybean, and sugarcane.",
+      "description_hi": "उच्च मिट्टी सामग्री, गीले होने पर फूलती है, सूखने पर फटती है। उत्कृष्ट जल धारण। कपास, सोयाबीन, गन्ने के लिए सर्वोत्तम।"
+    },
+    "red_laterite": {
+      "name_en": "Red and Laterite Soil",
+      "name_hi": "लाल और लैटेराइट मिट्टी",
+      "description_en": "Porous, iron-rich soil. Low in nitrogen and humus. Needs amendments for most crops. Groundnut, millets, and pulses do well.",
+      "description_hi": "छिद्रयुक्त, लौह-समृद्ध मिट्टी। नाइट्रोजन और ह्यूमस में कम। अधिकांश फसलों के लिए संशोधन आवश्यक।"
+    },
+    "red_loamy": {
+      "name_en": "Red Loamy Soil",
+      "name_hi": "लाल दोमट मिट्टी",
+      "description_en": "Well-drained with moderate fertility. Good for dry-land farming. Responds well to irrigation and fertilization.",
+      "description_hi": "मध्यम उर्वरता के साथ अच्छी जल निकासी। शुष्क भूमि खेती के लिए अच्छी। सिंचाई और उर्वरण पर अच्छी प्रतिक्रिया।"
+    },
+    "arid_sandy": {
+      "name_en": "Arid Sandy Soil",
+      "name_hi": "शुष्क बलुई मिट्टी",
+      "description_en": "Low moisture retention, low nutrients. Drought-resistant crops essential. Responds dramatically to irrigation. Bajra, jowar, and mustard are best adapted.",
+      "description_hi": "कम नमी धारण, कम पोषक तत्व। सूखा-प्रतिरोधी फसलें आवश्यक। सिंचाई पर नाटकीय प्रतिक्रिया।"
+    },
+    "red_yellow": {
+      "name_en": "Red and Yellow Soil",
+      "name_hi": "लाल और पीली मिट्टी",
+      "description_en": "Moderate fertility, well-drained. Deficient in nitrogen, phosphorus, and organic matter. Responds to organic inputs.",
+      "description_hi": "मध्यम उर्वरता, अच्छी जल निकासी। नाइट्रोजन, फास्फोरस और जैविक पदार्थ में कम।"
+    },
+    "laterite": {
+      "name_en": "Laterite Soil",
+      "name_hi": "लैटेराइट मिट्टी",
+      "description_en": "Acidic, iron and aluminium rich but nutrient poor. Best for plantation crops like rubber, cashew, and coconut.",
+      "description_hi": "अम्लीय, लौह और एल्यूमीनियम युक्त लेकिन पोषक तत्वों में कम। रबर, काजू, नारियल के लिए सर्वोत्तम।"
+    },
+    "forest_hill": {
+      "name_en": "Forest and Hill Soil",
+      "name_hi": "वन और पहाड़ी मिट्टी",
+      "description_en": "Acidic, rich in organic matter but thin. Terrace farming required. Suits millets, pulses, and horticulture.",
+      "description_hi": "अम्लीय, जैविक पदार्थ में समृद्ध लेकिन पतली। सीढ़ीनुमा खेती आवश्यक।"
+    },
+    "mountain_forest": {
+      "name_en": "Mountain and Forest Soil",
+      "name_hi": "पर्वतीय और वन मिट्टी",
+      "description_en": "Thin, rocky in higher altitudes. Fertile in valleys. Horticulture and potato farming common.",
+      "description_hi": "ऊंचाई पर पतली, चट्टानी। घाटियों में उपजाऊ। बागवानी और आलू की खेती सामान्य।"
+    },
+    "red_black_mixed": {
+      "name_en": "Red and Black Mixed Soil",
+      "name_hi": "लाल और काली मिश्रित मिट्टी",
+      "description_en": "Transition zone between red and black soils. Variable fertility. Crop choice depends on local dominant type.",
+      "description_hi": "लाल और काली मिट्टी के बीच संक्रमण क्षेत्र। परिवर्तनीय उर्वरता।"
+    }
+  }
+}
