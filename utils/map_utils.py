@@ -11,8 +11,6 @@ ESRI_ATTR = (
     "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, "
     "GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
 )
-
-# Label overlay that adds place names ON TOP of the satellite layer
 ESRI_LABELS_TILES = (
     "https://services.arcgisonline.com/ArcGIS/rest/services/"
     "Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
@@ -24,42 +22,94 @@ DEFAULT_ZOOM = 5
 
 
 def geocode_india(query: str) -> List[Dict[str, Any]]:
-    """
-    Geocode a free-text query (pincode, district, village, city) restricted to India.
-    Uses Nominatim (OpenStreetMap) — free, no API key required.
-
-    Returns a list of up to 5 dicts:
-        {"lat": float, "lng": float, "display_name": str, "type": str}
-    Returns [] on failure or no results.
-    """
     if not query or len(query.strip()) < 2:
         return []
     try:
         resp = requests.get(
             "https://nominatim.openstreetmap.org/search",
-            params={
-                "q": query.strip(),
-                "format": "json",
-                "limit": 5,
-                "countrycodes": "in",
-                "addressdetails": 0,
-            },
+            params={"q": query.strip(), "format": "json", "limit": 5,
+                    "countrycodes": "in", "addressdetails": 0},
             headers={"User-Agent": "FarmerRevenueOptimizer/1.0 (opensource)"},
             timeout=6,
         )
         resp.raise_for_status()
-        results = resp.json()
-        return [
-            {
-                "lat": float(r["lat"]),
-                "lng": float(r["lon"]),
-                "display_name": r.get("display_name", ""),
-                "type": r.get("type", ""),
-            }
-            for r in results
-        ]
+        return [{"lat": float(r["lat"]), "lng": float(r["lon"]),
+                 "display_name": r.get("display_name", ""),
+                 "type": r.get("type", "")} for r in resp.json()]
     except Exception:
         return []
+
+
+def reverse_geocode_state(lat: float, lng: float) -> Optional[str]:
+    """
+    Returns the Indian state name for given coordinates.
+    Used on location confirm to auto-fill state in farm details form.
+    Returns None on failure.
+    """
+    try:
+        resp = requests.get(
+            "https://nominatim.openstreetmap.org/reverse",
+            params={"lat": lat, "lon": lng, "format": "json", "zoom": 5},
+            headers={"User-Agent": "FarmerRevenueOptimizer/1.0 (opensource)"},
+            timeout=6,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        address = data.get("address", {})
+        # Nominatim returns state in "state" field
+        state = address.get("state", None)
+        if state:
+            # Normalize common name variations
+            state = _normalize_state_name(state)
+        return state
+    except Exception:
+        return None
+
+
+# Known name variations from Nominatim
+_STATE_NAME_MAP = {
+    "Uttar Pradesh":          "Uttar Pradesh",
+    "UP":                     "Uttar Pradesh",
+    "Madhya Pradesh":         "Madhya Pradesh",
+    "MP":                     "Madhya Pradesh",
+    "Andhra Pradesh":         "Andhra Pradesh",
+    "AP":                     "Andhra Pradesh",
+    "Himachal Pradesh":       "Himachal Pradesh",
+    "HP":                     "Himachal Pradesh",
+    "Arunachal Pradesh":      "Arunachal Pradesh",
+    "Jammu and Kashmir":      "Jammu and Kashmir",
+    "Jammu & Kashmir":        "Jammu and Kashmir",
+    "Odisha":                 "Odisha",
+    "Orissa":                 "Odisha",
+    "Uttarakhand":            "Uttarakhand",
+    "Uttaranchal":            "Uttarakhand",
+    "Telangana":              "Telangana",
+    "Chhattisgarh":           "Chhattisgarh",
+    "Chattisgarh":            "Chhattisgarh",
+    "Jharkhand":              "Jharkhand",
+}
+
+VALID_STATES = [
+    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+    "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
+    "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
+    "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
+    "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+]
+
+
+def _normalize_state_name(name: str) -> Optional[str]:
+    if name in VALID_STATES:
+        return name
+    mapped = _STATE_NAME_MAP.get(name)
+    if mapped:
+        return mapped
+    # Fuzzy match
+    name_lower = name.lower()
+    for valid in VALID_STATES:
+        if valid.lower() in name_lower or name_lower in valid.lower():
+            return valid
+    return name  # Return as-is if no match
 
 
 def make_selection_map(
@@ -70,88 +120,39 @@ def make_selection_map(
     pending_lat: Optional[float] = None,
     pending_lng: Optional[float] = None,
 ) -> folium.Map:
-    """
-    Build the Leaflet selection map with:
-    - Esri satellite basemap (default)
-    - Esri label overlay (place names visible on satellite)
-    - OpenStreetMap as alternative base layer
-    - Draw tools (polygon, rectangle, marker)
-    - A RED pending marker if pending_lat/lng are set (not yet confirmed)
-    - A GREEN confirmed marker if confirmed_lat/lng are set
-    """
     center = center or INDIA_CENTER
+    m = folium.Map(location=center, zoom_start=zoom, tiles=None)
 
-    m = folium.Map(
-        location=center,
-        zoom_start=zoom,
-        tiles=None,           # We add layers manually for full control
-    )
+    folium.TileLayer(tiles=ESRI_SATELLITE_TILES, attr=ESRI_ATTR,
+                     name="Satellite", overlay=False, control=True, show=True).add_to(m)
+    folium.TileLayer(tiles="OpenStreetMap", name="Street Map",
+                     overlay=False, control=True, show=False).add_to(m)
+    folium.TileLayer(tiles=ESRI_LABELS_TILES, attr=ESRI_LABELS_ATTR,
+                     name="Place Names (overlay)", overlay=True, control=True,
+                     show=True, opacity=1.0).add_to(m)
 
-    # --- Base layers ---
-    folium.TileLayer(
-        tiles=ESRI_SATELLITE_TILES,
-        attr=ESRI_ATTR,
-        name="Satellite",
-        overlay=False,
-        control=True,
-        show=True,
-    ).add_to(m)
+    Draw(export=False,
+         draw_options={"polygon": True, "marker": True, "rectangle": True,
+                       "circle": False, "polyline": False, "circlemarker": False},
+         edit_options={"edit": True, "remove": True}).add_to(m)
 
-    folium.TileLayer(
-        tiles="OpenStreetMap",
-        name="Street Map",
-        overlay=False,
-        control=True,
-        show=False,
-    ).add_to(m)
-
-    # --- Label overlay: adds place/district/road names on top of satellite ---
-    folium.TileLayer(
-        tiles=ESRI_LABELS_TILES,
-        attr=ESRI_LABELS_ATTR,
-        name="Place Names (overlay)",
-        overlay=True,         # overlay = sits on top of base layer
-        control=True,
-        show=True,            # on by default so satellite shows names
-        opacity=1.0,
-    ).add_to(m)
-
-    # --- Draw tools ---
-    Draw(
-        export=False,
-        draw_options={
-            "polygon":      True,
-            "marker":       True,
-            "rectangle":    True,
-            "circle":       False,
-            "polyline":     False,
-            "circlemarker": False,
-        },
-        edit_options={"edit": True, "remove": True},
-    ).add_to(m)
-
-    # --- Pending marker (red/orange) — user clicked but hasn't confirmed yet ---
     if pending_lat is not None and pending_lng is not None:
         folium.Marker(
             location=[pending_lat, pending_lng],
             tooltip="Click 'Confirm' below to lock this location",
             popup=folium.Popup(
                 f"<b>Pending location</b><br>Lat: {pending_lat:.5f}<br>Lng: {pending_lng:.5f}"
-                "<br><i>Scroll down and click Confirm</i>",
-                max_width=220,
-            ),
+                "<br><i>Scroll down and click Confirm</i>", max_width=220),
             icon=folium.Icon(color="orange", icon="map-marker", prefix="fa"),
         ).add_to(m)
 
-    # --- Confirmed marker (green) — locked-in location ---
     if confirmed_lat is not None and confirmed_lng is not None:
         folium.Marker(
             location=[confirmed_lat, confirmed_lng],
             tooltip="Confirmed field location",
             popup=folium.Popup(
                 f"<b>Confirmed location</b><br>Lat: {confirmed_lat:.5f}<br>Lng: {confirmed_lng:.5f}",
-                max_width=200,
-            ),
+                max_width=200),
             icon=folium.Icon(color="green", icon="leaf", prefix="fa"),
         ).add_to(m)
 
@@ -159,50 +160,31 @@ def make_selection_map(
     return m
 
 
-def extract_lat_lng(
-    st_folium_result: Optional[dict],
-) -> Tuple[Optional[float], Optional[float]]:
-    """
-    Extract the best available lat/lng from st_folium() result dict.
-    Priority: drawn Point > Polygon centroid > last_clicked
-    Returns (None, None) if no interaction yet.
-    """
+def extract_lat_lng(st_folium_result: Optional[dict]) -> Tuple[Optional[float], Optional[float]]:
     if not st_folium_result:
         return None, None
-
     drawings = st_folium_result.get("all_drawings") or []
-
     for feature in drawings:
         geom = feature.get("geometry") or {}
         geom_type = geom.get("type", "")
         coords = geom.get("coordinates") or []
-
         if geom_type == "Point" and len(coords) >= 2:
             return float(coords[1]), float(coords[0])
-
         if geom_type in ("Polygon", "MultiPolygon") and coords:
             outer = coords[0] if geom_type == "Polygon" else coords[0][0]
             if outer:
-                avg_lat = sum(float(c[1]) for c in outer) / len(outer)
-                avg_lng = sum(float(c[0]) for c in outer) / len(outer)
-                return avg_lat, avg_lng
-
+                return (sum(float(c[1]) for c in outer) / len(outer),
+                        sum(float(c[0]) for c in outer) / len(outer))
         if geom_type == "LineString" and coords:
-            avg_lat = sum(float(c[1]) for c in coords) / len(coords)
-            avg_lng = sum(float(c[0]) for c in coords) / len(coords)
-            return avg_lat, avg_lng
-
+            return (sum(float(c[1]) for c in coords) / len(coords),
+                    sum(float(c[0]) for c in coords) / len(coords))
     last_clicked = st_folium_result.get("last_clicked") or {}
     if last_clicked and "lat" in last_clicked and "lng" in last_clicked:
         return float(last_clicked["lat"]), float(last_clicked["lng"])
-
     return None, None
 
 
-def extract_polygon_coords(
-    st_folium_result: Optional[dict],
-) -> Optional[List[List[float]]]:
-    """Return outer-ring polygon as [[lat, lng], ...] if a polygon was drawn."""
+def extract_polygon_coords(st_folium_result: Optional[dict]) -> Optional[List[List[float]]]:
     if not st_folium_result:
         return None
     drawings = st_folium_result.get("all_drawings") or []
@@ -215,5 +197,4 @@ def extract_polygon_coords(
 
 
 def validate_india_bounds(lat: float, lng: float) -> bool:
-    """Loose bounding box for the Indian subcontinent: Lat 6-38N, Lng 68-98E."""
     return 6.0 <= lat <= 38.0 and 68.0 <= lng <= 98.0
