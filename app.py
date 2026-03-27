@@ -45,7 +45,7 @@ if lang == "hi":
         > वित्तीय निर्णय लेने से पहले अपने स्थानीय कृषि अधिकारी से सत्यापित करें।
         """
     )
-    if st.button("🚀 शुरू करें — खेत का स्थान चुनें", type="primary", use_container_width=True):
+    if st.button(" शुरू करें — खेत का स्थान चुनें", type="primary", use_container_width=True):
         st.switch_page("pages/1_Land_Selection.py")
 else:
     st.title("🌾 Farmer Revenue Optimizer")
@@ -67,7 +67,7 @@ else:
         > before making financial decisions.
         """
     )
-    if st.button("🚀 Get Started — Select Your Field", type="primary", use_container_width=True):
+    if st.button(" Get Started — Select Your Field", type="primary", use_container_width=True):
         st.switch_page("pages/1_Land_Selection.py")
 
 st.divider()
