@@ -163,92 +163,68 @@ class FarmReport(FPDF):
 
     def _draw_cost_table(self, use_hindi: bool = False):
         """
-        Shared cost table builder for both languages.
-        Uses multi_cell for the 'How to Reduce' column so tips are never truncated.
+        Stable cost table using only cell() — no mixed rect+multi_cell.
+        Column widths sum to exactly 180 (usable width with 15mm margins each side).
+        Tips are truncated in the table; full tips appear as bullets below the table.
         """
         if use_hindi:
-            headers = ["लागत श्रेणी", "कुल (Rs.)", "बचत संभव", "सुझाव"]
+            headers = ["लागत श्रेणी", "कुल (Rs.)", "बचत", "सुझाव (संक्षिप्त)"]
         else:
-            headers = ["Cost Category", "Total (Rs.)", "Save Up To", "How to Reduce"]
+            headers = ["Cost Category", "Total (Rs.)", "Save Up To", "Tip (see bullets below for full)"]
 
-        # Column widths: name | amount | savings | tip (tip gets most space)
-        col_w = [48, 28, 28, 76]
+        # Widths must sum to 180 exactly (210mm page - 15mm left - 15mm right)
+        col_w = [50, 30, 30, 70]
+        row_h = 7
 
         # Header row
-        self._font("B", 9)
+        self._font("B", 8)
         self.set_fill_color(*COLOR_TABLE_HEADER)
         self.set_text_color(*COLOR_WHITE)
         self.set_draw_color(*COLOR_BORDER)
         for i, h in enumerate(headers):
-            self.cell(col_w[i], 7, h, border=1, fill=True)
+            self.cell(col_w[i], row_h, self._safe(h), border=1, fill=True)
         self.ln()
 
         self.set_text_color(*COLOR_DARK_GRAY)
         alt = False
         for item in self.result.cost_items:
-            fill_color = COLOR_TABLE_ALT if alt else COLOR_WHITE
+            self.set_fill_color(*(COLOR_TABLE_ALT if alt else COLOR_WHITE))
             alt = not alt
-            self.set_fill_color(*fill_color)
 
             name = item.name_hi if use_hindi else item.name_en
             tip  = item.reduction_tip_hi if use_hindi else item.reduction_tip_en
 
-            # Record Y before this row
-            row_y = self.get_y()
-            row_x = self.get_x()
+            # Truncate tip to fit column — full tips are in the bullets section below
+            max_tip_chars = 58
+            tip_display = self._safe(tip[:max_tip_chars] + "..." if len(tip) > max_tip_chars else tip)
 
-            # Calculate height needed for the tip text (multi_cell)
-            # We simulate with a string length estimate: ~10 chars per unit width
-            # Use fixed row height = 10 to keep table clean
-            row_h = 10
-
-            # Name cell
             self._font("B", 8)
-            self.set_xy(row_x, row_y)
-            self.cell(col_w[0], row_h, self._safe(name), border=1, fill=True)
-
-            # Amount
+            self.cell(col_w[0], row_h, self._safe(name),
+                      border=1, fill=True)
             self._font("", 8)
-            self.cell(col_w[1], row_h,
-                      f"Rs. {item.amount:,}", border=1, fill=True, align="R")
-
-            # Savings
+            self.cell(col_w[1], row_h, f"Rs. {item.amount:,}",
+                      border=1, fill=True, align="R")
             self.set_text_color(*COLOR_MID_GREEN)
-            self.cell(col_w[2], row_h,
-                      f"Rs. {item.reducible_by:,}", border=1, fill=True, align="R")
+            self.cell(col_w[2], row_h, f"Rs. {item.reducible_by:,}",
+                      border=1, fill=True, align="R")
             self.set_text_color(*COLOR_DARK_GRAY)
-
-            # Tip — multi_cell so it wraps and never truncates
-            tip_x = self.get_x()
-            tip_y = self.get_y()
-            self._font("", 8)
-            # Draw border rect manually so it matches the cell height
-            self.rect(tip_x, tip_y, col_w[3], row_h)
-            if fill_color != COLOR_WHITE:
-                self.set_fill_color(*fill_color)
-                self.rect(tip_x, tip_y, col_w[3], row_h, "F")
-            self.set_xy(tip_x + 1, tip_y + 1)
-            # Constrain multi_cell to the column width
-            self.multi_cell(col_w[3] - 2, 4.5, self._safe(tip))
-
-            # Move to next row
-            self.set_xy(row_x, tip_y + row_h)
+            self.cell(col_w[3], row_h, tip_display,
+                      border=1, fill=True)
+            self.ln()
 
         # Totals row
         self._font("B", 9)
         self.set_fill_color(*COLOR_LIGHT_GREEN_BG)
         total_label = "कुल" if use_hindi else "TOTAL"
-        self.cell(col_w[0], 7, total_label, border=1, fill=True)
-        self.cell(col_w[1], 7,
-                  f"Rs. {self.result.total_cost:,}",
+        self.cell(col_w[0], row_h, total_label, border=1, fill=True)
+        self.cell(col_w[1], row_h, f"Rs. {self.result.total_cost:,}",
                   border=1, fill=True, align="R")
         self.set_text_color(*COLOR_MID_GREEN)
-        self.cell(col_w[2], 7,
-                  f"Rs. {self.result.total_reducible_cost:,}",
+        self.cell(col_w[2], row_h, f"Rs. {self.result.total_reducible_cost:,}",
                   border=1, fill=True, align="R")
         self.set_text_color(*COLOR_DARK_GRAY)
         all_tips = "सभी सुझाव अपनाएं" if use_hindi else "Apply all tips above"
-        self.cell(col_w[3], 7, all_tips, border=1, fill=True)
+        self.cell(col_w[3], row_h, all_tips, border=1, fill=True)
         self.ln()
 
 
