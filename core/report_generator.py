@@ -142,7 +142,10 @@ class FarmReport(FPDF):
         self.multi_cell(USABLE_W - 4, 5.5, self._s(f"- {text}"))
 
     def numbered_tip(self, n: int, label: str, tip: str):
-        """Numbered cost-reduction tip below the table."""
+        """Numbered cost-reduction tip. set_x before every write."""
+        # Write label + tip as one multi_cell block to avoid
+        # label orphaning at page breaks
+        combined = self._s(f"{n}. {label}\n    {tip}")
         self._f("B", 9)
         self.set_text_color(*COLOR_MID_GREEN)
         self.set_x(L_MARGIN + 2)
@@ -267,7 +270,10 @@ def _en(pdf: FarmReport, r: RecommendationResult, farm_location: str):
 
     # Summary
     pdf.section_title("Summary")
-    narrative = r.narrative_en.replace(" soil soil ", " soil ")
+    narrative = r.narrative_en
+    narrative = narrative.replace(" soil soil ", " soil ")
+    narrative = narrative.replace(" Soil soil ", " Soil ")
+    narrative = narrative.replace(" Soil Soil ", " Soil ")
     pdf._ml(narrative, lh=6)
 
     if r.risk_flag:
