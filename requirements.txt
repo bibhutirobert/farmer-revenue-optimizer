@@ -7,4 +7,3 @@ numpy>=1.26.0
 pytest>=7.4.0
 requests>=2.31.0
 openai>=1.0.0
-rlPyCairo>=0.3.0
