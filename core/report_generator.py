@@ -1,15 +1,13 @@
 """
-PDF Report Generator — V3 (fixed)
-Dual-language: English section first, Hindi section second, one file.
+PDF Report Generator — V3 (stable rewrite)
 
-Key fixes in this version:
-- All Hindi text uses multi_cell() instead of cell() — fixes Devanagari rendering
-- Cost table "How to Reduce" column uses multi_cell for full tip text
-- Crop label truncation fixed — splits to two lines if too long
-- "soil soil" double word fixed in narrative caller
-- Price provenance shows human-readable label not raw metadata
-- "+35% est" expanded to full phrase
-- _safe() protects Helvetica fallback from Unicode crashes
+Design rules that prevent all "not enough horizontal space" crashes:
+1. NEVER use set_xy(0, y) — always set_x(left_margin) or set_x(18)
+2. NEVER mix cell() and multi_cell() with cursor-position dependencies
+3. ALL text output uses multi_cell() — consistent, safe, never crashes
+4. Hero box uses ln/set_x flow only — no rect-then-set_xy tricks
+5. KPI rows: label + value on same multi_cell line, tab-aligned with spaces
+6. Cost table: pure cell() only, widths sum exactly to 180mm
 """
 
 import os
@@ -17,11 +15,12 @@ from fpdf import FPDF
 from typing import Optional
 from core.models import RecommendationResult
 
-ROOT_DIR    = os.path.dirname(os.path.dirname(__file__))
-FONTS_DIR   = os.path.join(ROOT_DIR, "fonts")
+ROOT_DIR         = os.path.dirname(os.path.dirname(__file__))
+FONTS_DIR        = os.path.join(ROOT_DIR, "fonts")
 DEJAVU_PATH      = os.path.join(FONTS_DIR, "DejaVuSans.ttf")
 DEJAVU_BOLD_PATH = os.path.join(FONTS_DIR, "DejaVuSans-Bold.ttf")
 
+# Colours
 COLOR_MID_GREEN      = (46, 125, 50)
 COLOR_DARK_GREEN     = (30, 100, 30)
 COLOR_LIGHT_GREEN_BG = (232, 245, 233)
@@ -34,6 +33,12 @@ COLOR_TABLE_HEADER   = (27, 94, 32)
 COLOR_TABLE_ALT      = (240, 248, 240)
 COLOR_BORDER         = (180, 180, 180)
 COLOR_HINDI_HEADER   = (13, 71, 161)
+COLOR_AI_HEADER      = (74, 20, 140)
+
+L_MARGIN = 15   # left margin mm
+R_MARGIN = 15   # right margin mm
+PAGE_W   = 210  # A4 width mm
+CONTENT_W = PAGE_W - L_MARGIN - R_MARGIN  # 180mm usable
 
 
 def _has_devanagari_font() -> bool:
@@ -41,24 +46,25 @@ def _has_devanagari_font() -> bool:
 
 
 class FarmReport(FPDF):
+
     def __init__(self, result: RecommendationResult, farm_location: str = ""):
         super().__init__()
         self.result        = result
         self.farm_location = farm_location
         self._unicode_loaded = False
         self.set_auto_page_break(auto=True, margin=18)
-        self.set_margins(15, 15, 15)
+        self.set_margins(L_MARGIN, L_MARGIN, R_MARGIN)
 
         if _has_devanagari_font():
             try:
-                self.add_font("DejaVu", "",  DEJAVU_PATH, uni=True)
-                bold_path = DEJAVU_BOLD_PATH if os.path.exists(DEJAVU_BOLD_PATH) else DEJAVU_PATH
-                self.add_font("DejaVu", "B", bold_path, uni=True)
+                self.add_font("DejaVu", "", DEJAVU_PATH, uni=True)
+                bold = DEJAVU_BOLD_PATH if os.path.exists(DEJAVU_BOLD_PATH) else DEJAVU_PATH
+                self.add_font("DejaVu", "B", bold, uni=True)
                 self._unicode_loaded = True
             except Exception:
                 self._unicode_loaded = False
 
-    # ── Font helpers ───────────────────────────────────────────────────────────
+    # ── Font & safety helpers ──────────────────────────────────────────────────
 
     def _font(self, style: str = "", size: int = 10):
         if self._unicode_loaded:
@@ -67,47 +73,56 @@ class FarmReport(FPDF):
             self.set_font("Helvetica", style, size)
 
     def _safe(self, text: str) -> str:
-        """
-        Sanitize text for Helvetica (Latin-1 only).
-        When DejaVu is loaded this is a no-op — text passes through unchanged.
-        """
+        """Replace Unicode chars that crash Helvetica. No-op when DejaVu loaded."""
         if self._unicode_loaded:
             return text
         replacements = {
-            "\u2014": "-",    # em-dash —
-            "\u2013": "-",    # en-dash –
-            "\u2018": "'",    # left single quote
-            "\u2019": "'",    # right single quote
-            "\u201c": '"',    # left double quote
-            "\u201d": '"',    # right double quote
-            "\u2022": "-",    # bullet •
-            "\u20b9": "Rs.",  # rupee ₹
-            "\u2026": "...",  # ellipsis …
-            "\u00d7": "x",    # multiplication ×
+            "\u2014": "-", "\u2013": "-",
+            "\u2018": "'", "\u2019": "'",
+            "\u201c": '"', "\u201d": '"',
+            "\u2022": "-", "\u20b9": "Rs.",
+            "\u2026": "...", "\u00d7": "x",
         }
-        for char, rep in replacements.items():
-            text = text.replace(char, rep)
+        for ch, rep in replacements.items():
+            text = text.replace(ch, rep)
         return text.encode("latin-1", errors="replace").decode("latin-1")
+
+    def _ml(self, text: str, line_h: float = 6, size: int = 10,
+            style: str = "", color=None, indent: int = 0):
+        """
+        Safe multi_cell wrapper. Always resets X to left_margin + indent first.
+        This is the ONLY text-output method used throughout — no raw cell() for body text.
+        """
+        self._font(style, size)
+        if color:
+            self.set_text_color(*color)
+        else:
+            self.set_text_color(*COLOR_DARK_GRAY)
+        self.set_x(L_MARGIN + indent)
+        self.multi_cell(CONTENT_W - indent, line_h, self._safe(text))
 
     # ── Page chrome ────────────────────────────────────────────────────────────
 
     def header(self):
         self.set_fill_color(*COLOR_MID_GREEN)
-        self.rect(0, 0, 210, 22, "F")
+        self.rect(0, 0, PAGE_W, 22, "F")
         self.set_text_color(*COLOR_WHITE)
-        self._font("B", 13)
-        self.set_xy(0, 6)
-        self.cell(0, 10, "Farmer Revenue Optimizer  |  Crop Advisory Report", align="C")
+        self.set_font("Helvetica", "B", 13)
+        self.set_xy(L_MARGIN, 6)
+        self.cell(CONTENT_W, 10,
+                  "Farmer Revenue Optimizer  |  Crop Advisory Report",
+                  align="C")
         self.set_text_color(*COLOR_DARK_GRAY)
-        self.ln(18)
+        self.ln(16)
 
     def footer(self):
         self.set_y(-13)
-        self._font("", 8)
+        self.set_font("Helvetica", "", 8)
         self.set_text_color(*COLOR_MID_GRAY)
-        self.cell(0, 10,
-            f"Page {self.page_no()} | Advisory only. Verify with local KVK.",
-            align="C")
+        self.set_x(L_MARGIN)
+        self.cell(CONTENT_W, 10,
+                  f"Page {self.page_no()} | Advisory only. Verify with local KVK.",
+                  align="C")
 
     # ── Layout helpers ─────────────────────────────────────────────────────────
 
@@ -116,67 +131,53 @@ class FarmReport(FPDF):
         self.set_fill_color(*color)
         self.set_text_color(*COLOR_WHITE)
         self._font("B", 11)
-        self.cell(0, 8, self._safe(f"  {title}"), ln=True, fill=True)
+        self.set_x(L_MARGIN)
+        self.cell(CONTENT_W, 8, self._safe(f"  {title}"), ln=True, fill=True)
         self.set_text_color(*COLOR_DARK_GRAY)
         self.ln(2)
 
-    def body_text(self, text: str, size: int = 10):
-        self._font("", size)
+    def kpi_line(self, label: str, value: str, color=COLOR_DARK_GREEN):
+        """
+        Single KPI line. Uses multi_cell so both Latin and Devanagari render safely.
+        Format: "Label:                Rs. X,XXX"
+        Padding with spaces approximates right-alignment without cell() cursor games.
+        """
+        self._font("B", 11)
+        self.set_text_color(*color)
+        self.set_x(L_MARGIN + 3)
+        # Pad label to fixed width so value appears right-aligned visually
+        line = f"{label:<28}{value}"
+        self.multi_cell(CONTENT_W - 6, 8, self._safe(line))
         self.set_text_color(*COLOR_DARK_GRAY)
-        self.multi_cell(0, 6, self._safe(text))
-        self.ln(1)
 
     def bullet(self, text: str):
         self._font("", 9)
-        self.set_x(20)
         self.set_text_color(*COLOR_DARK_GRAY)
-        self.multi_cell(0, 5.5, self._safe(f"- {text}"))
+        self.set_x(L_MARGIN + 4)
+        self.multi_cell(CONTENT_W - 4, 5.5, self._safe(f"- {text}"))
 
-    def kpi_row_en(self, label: str, value: str, color=COLOR_DARK_GREEN):
-        """English KPI row — uses cell() safely (Latin-1 labels only)."""
-        self._font("B", 11)
-        self.set_text_color(*color)
-        self.cell(90, 8, self._safe(label), border=0)
-        self._font("B", 12)
-        self.cell(0, 8, self._safe(value), border=0, ln=True)
-        self.set_text_color(*COLOR_DARK_GRAY)
+    def colored_band(self, color, height: int = 10):
+        """Draw a full-width coloured band at current Y."""
+        self.set_fill_color(*color)
+        self.rect(0, self.get_y(), PAGE_W, height, "F")
 
-    def kpi_row_hi(self, label: str, value: str, color=COLOR_DARK_GREEN):
+    # ── Cost table ─────────────────────────────────────────────────────────────
+
+    def cost_table(self, use_hindi: bool = False):
         """
-        Hindi KPI row — uses multi_cell() for the label because cell() drops
-        Devanagari characters silently in fpdf2. Value is numeric so cell() is fine.
-        """
-        self._font("B", 11)
-        self.set_text_color(*color)
-        # Save position, write label via multi_cell in a fixed-width column
-        x_start = self.get_x()
-        y_start = self.get_y()
-        self.multi_cell(90, 8, label)
-        # Move to value column (same Y as start)
-        self.set_xy(x_start + 90, y_start)
-        self._font("B", 12)
-        self.set_text_color(*color)
-        self.cell(0, 8, value, ln=True)
-        self.set_text_color(*COLOR_DARK_GRAY)
-
-    # ── Cost tables ────────────────────────────────────────────────────────────
-
-    def _draw_cost_table(self, use_hindi: bool = False):
-        """
-        Stable cost table using only cell() — no mixed rect+multi_cell.
-        Column widths sum to exactly 180 (usable width with 15mm margins each side).
-        Tips are truncated in the table; full tips appear as bullets below the table.
+        Pure cell() cost table. Widths sum to exactly 180mm (CONTENT_W).
+        Tips truncated to fit — full tips are in the bullets section below.
         """
         if use_hindi:
-            headers = ["लागत श्रेणी", "कुल (Rs.)", "बचत", "सुझाव (संक्षिप्त)"]
+            headers = ["लागत श्रेणी", "कुल (Rs.)", "बचत", "सुझाव (नीचे पूर्ण)"]
         else:
-            headers = ["Cost Category", "Total (Rs.)", "Save Up To", "Tip (see bullets below for full)"]
+            headers = ["Cost Category", "Total (Rs.)", "Save Up To",
+                       "Tip (full detail in bullets below)"]
 
-        # Widths must sum to 180 exactly (210mm page - 15mm left - 15mm right)
-        col_w = [50, 30, 30, 70]
+        col_w = [50, 30, 30, 70]   # sum = 180 = CONTENT_W exactly
         row_h = 7
 
-        # Header row
+        self.set_x(L_MARGIN)
         self._font("B", 8)
         self.set_fill_color(*COLOR_TABLE_HEADER)
         self.set_text_color(*COLOR_WHITE)
@@ -185,22 +186,19 @@ class FarmReport(FPDF):
             self.cell(col_w[i], row_h, self._safe(h), border=1, fill=True)
         self.ln()
 
-        self.set_text_color(*COLOR_DARK_GRAY)
         alt = False
         for item in self.result.cost_items:
             self.set_fill_color(*(COLOR_TABLE_ALT if alt else COLOR_WHITE))
             alt = not alt
-
             name = item.name_hi if use_hindi else item.name_en
             tip  = item.reduction_tip_hi if use_hindi else item.reduction_tip_en
-
-            # Truncate tip to fit column — full tips are in the bullets section below
-            max_tip_chars = 58
-            tip_display = self._safe(tip[:max_tip_chars] + "..." if len(tip) > max_tip_chars else tip)
-
+            tip_short = self._safe(
+                tip[:56] + "..." if len(tip) > 56 else tip
+            )
+            self.set_x(L_MARGIN)
             self._font("B", 8)
-            self.cell(col_w[0], row_h, self._safe(name),
-                      border=1, fill=True)
+            self.set_text_color(*COLOR_DARK_GRAY)
+            self.cell(col_w[0], row_h, self._safe(name), border=1, fill=True)
             self._font("", 8)
             self.cell(col_w[1], row_h, f"Rs. {item.amount:,}",
                       border=1, fill=True, align="R")
@@ -208,11 +206,11 @@ class FarmReport(FPDF):
             self.cell(col_w[2], row_h, f"Rs. {item.reducible_by:,}",
                       border=1, fill=True, align="R")
             self.set_text_color(*COLOR_DARK_GRAY)
-            self.cell(col_w[3], row_h, tip_display,
-                      border=1, fill=True)
+            self.cell(col_w[3], row_h, tip_short, border=1, fill=True)
             self.ln()
 
-        # Totals row
+        # Totals
+        self.set_x(L_MARGIN)
         self._font("B", 9)
         self.set_fill_color(*COLOR_LIGHT_GREEN_BG)
         total_label = "कुल" if use_hindi else "TOTAL"
@@ -223,292 +221,263 @@ class FarmReport(FPDF):
         self.cell(col_w[2], row_h, f"Rs. {self.result.total_reducible_cost:,}",
                   border=1, fill=True, align="R")
         self.set_text_color(*COLOR_DARK_GRAY)
-        all_tips = "सभी सुझाव अपनाएं" if use_hindi else "Apply all tips above"
-        self.cell(col_w[3], row_h, all_tips, border=1, fill=True)
+        apply_all = "सभी सुझाव अपनाएं" if use_hindi else "Apply all tips above"
+        self.cell(col_w[3], row_h, apply_all, border=1, fill=True)
         self.ln()
 
 
-# ── English section builder ────────────────────────────────────────────────────
+# ── Price label helper ─────────────────────────────────────────────────────────
 
-def _build_english_section(pdf: FarmReport, r: RecommendationResult,
-                            farm_location: str):
-    pdf.add_page()
-
-    # ── Hero box ──
-    pdf.set_fill_color(*COLOR_LIGHT_GREEN_BG)
-    pdf.rect(14, pdf.get_y(), 182, 52, "F")
-    pdf.set_xy(18, pdf.get_y() + 3)
-
-    # Crop name line (keep short — soil on separate line to avoid truncation)
-    pdf._font("B", 13)
-    pdf.set_text_color(*COLOR_MID_GREEN)
-    crop_line = f"{r.crop_name_en}  |  {r.acreage:.1f} acres"
-    if farm_location:
-        crop_line += f"  |  {farm_location}"
-    pdf.multi_cell(0, 8, pdf._safe(crop_line))
-
-    # Soil line below crop name (separate to avoid truncation)
-    if r.soil_name_en:
-        pdf._font("", 9)
-        pdf.set_text_color(*COLOR_MID_GRAY)
-        pdf.set_x(18)
-        pdf.cell(0, 6, pdf._safe(f"Soil: {r.soil_name_en}  |  Climate: {r.climate_zone}"),
-                 ln=True)
-
-    pdf.set_x(18)
-    pdf.kpi_row_en("Gross Revenue:",    f"Rs. {r.gross_revenue:,}")
-    pdf.set_x(18)
-    pdf.kpi_row_en("Total Input Cost:", f"Rs. {r.total_cost:,}",
-                   color=COLOR_AMBER)
-    margin_color = COLOR_MID_GREEN if r.net_margin >= 0 else COLOR_RED
-    pdf.set_x(18)
-    pdf.kpi_row_en("Net Margin:",       f"Rs. {r.net_margin:,}",
-                   color=margin_color)
-    pdf.set_x(18)
-    pdf.kpi_row_en("Potential Savings:", f"Rs. {r.total_reducible_cost:,}",
-                   color=COLOR_MID_GREEN)
-    pdf.ln(6)
-
-    # ── Price info ──
-    pdf.section_title("Price Information")
-    price_type_label = {
+def _price_label(price_type: str, lang: str = "en") -> str:
+    if lang == "hi":
+        return {
+            "msp":     "MSP 2023-24 (सरकारी न्यूनतम समर्थन मूल्य)",
+            "frp":     "FRP 2023-24 (सरकारी उचित एवं लाभकारी मूल्य)",
+            "market":  "बाजार औसत (रूढ़िवादी अनुमान)",
+            "default": "संदर्भ मूल्य (MSP/FRP 2023-24)",
+        }.get(price_type, price_type.upper())
+    return {
         "msp":     "MSP 2023-24 (Govt. Minimum Support Price)",
         "frp":     "FRP 2023-24 (Govt. Fair & Remunerative Price)",
-        "market":  "Market Average (conservative estimate — actual may vary)",
+        "market":  "Market Average (conservative — actual may vary)",
         "default": "Reference price (MSP/FRP 2023-24)",
-    }.get(r.price_type, r.price_type.upper())
-    pdf.body_text(
+    }.get(price_type, price_type.upper())
+
+
+# ── English section ────────────────────────────────────────────────────────────
+
+def _english_section(pdf: FarmReport, r: RecommendationResult,
+                     farm_location: str):
+    pdf.add_page()
+
+    # Hero band
+    pdf.set_fill_color(*COLOR_LIGHT_GREEN_BG)
+    band_y = pdf.get_y()
+    pdf.rect(L_MARGIN, band_y, CONTENT_W, 58, "F")
+    pdf.ln(3)
+
+    # Crop + location
+    pdf._ml(f"{r.crop_name_en}  |  {r.acreage:.1f} acres",
+            line_h=9, size=13, style="B", color=COLOR_MID_GREEN, indent=3)
+    if farm_location:
+        pdf._ml(farm_location, line_h=6, size=9,
+                color=COLOR_MID_GRAY, indent=3)
+    if r.soil_name_en:
+        pdf._ml(f"Soil: {r.soil_name_en}  |  Climate: {r.climate_zone}",
+                line_h=6, size=9, color=COLOR_MID_GRAY, indent=3)
+    pdf.ln(1)
+
+    # KPI lines
+    pdf.kpi_line("Gross Revenue:",    f"Rs. {r.gross_revenue:,}")
+    pdf.kpi_line("Total Input Cost:", f"Rs. {r.total_cost:,}",
+                 color=COLOR_AMBER)
+    mc = COLOR_MID_GREEN if r.net_margin >= 0 else COLOR_RED
+    pdf.kpi_line("Net Margin:",       f"Rs. {r.net_margin:,}", color=mc)
+    pdf.kpi_line("Potential Savings:", f"Rs. {r.total_reducible_cost:,}",
+                 color=COLOR_MID_GREEN)
+    pdf.ln(4)
+
+    # Price info
+    pdf.section_title("Price Information")
+    pdf._ml(
         f"Price used: Rs. {r.price_per_quintal:,} per quintal\n"
-        f"Basis: {price_type_label}"
+        f"Basis: {_price_label(r.price_type, 'en')}",
+        line_h=6
     )
 
-    # ── Summary ──
+    # Summary
     pdf.section_title("Summary")
-    # Fix "soil soil" double word
-    narrative = r.narrative_en.replace(" soil soil ", " soil ")
-    pdf.body_text(narrative)
+    narrative = r.narrative_en.replace(" soil soil ", " soil ").replace(
+        " Soil soil ", " Soil ")
+    pdf._ml(narrative, line_h=6)
 
     if r.risk_flag:
-        pdf.set_fill_color(*COLOR_RED)
+        pdf.ln(2)
+        pdf.colored_band(COLOR_RED, 9)
         pdf.set_text_color(*COLOR_WHITE)
         pdf._font("B", 10)
-        pdf.cell(0, 8,
-            "  WARNING: Net margin below Rs. 5,000/acre. Urgent action required.",
-            ln=True, fill=True)
+        pdf.set_x(L_MARGIN + 2)
+        pdf.multi_cell(CONTENT_W - 2, 9,
+            "WARNING: Net margin below Rs. 5,000/acre. Urgent action required.")
         pdf.set_text_color(*COLOR_DARK_GRAY)
         pdf.ln(2)
 
-    # ── Cost table ──
+    # Cost table
     pdf.section_title("Cost Breakdown & Reduction Opportunities")
-    pdf._draw_cost_table(use_hindi=False)
+    pdf._ml("Full tip text is in the 'Low-Cost Techniques' section below the table.",
+            line_h=5, size=8, color=COLOR_MID_GRAY)
+    pdf.ln(1)
+    pdf.cost_table(use_hindi=False)
     pdf.ln(2)
 
-    # ── Low-cost tips ──
+    # Low-cost tips
     pdf.section_title("Low-Cost & Ancient Farming Techniques")
     for tip in r.low_cost_tips_en:
         pdf.bullet(tip)
     pdf.ln(3)
 
-    # ── Intercropping ──
+    # Intercropping
     if r.intercrop_suggestions:
         pdf.section_title("Intercropping Opportunities")
         for sugg in r.intercrop_suggestions:
-            pdf._font("B", 9)
-            pdf.set_text_color(*COLOR_MID_GREEN)
-            pdf.multi_cell(0, 6,
-                pdf._safe(f"{sugg.companion_name_en}  (Row ratio: {sugg.row_ratio})"))
-            pdf.set_text_color(*COLOR_DARK_GRAY)
-            pdf._font("", 8)
-            pdf.multi_cell(0, 5, pdf._safe(sugg.benefit_en))
-            pdf._font("B", 8)
-            pdf.set_text_color(*COLOR_MID_GREEN)
-            pdf.cell(0, 5,
-                pdf._safe(
-                    f"+{sugg.revenue_uplift_percent:.0f}% estimated revenue uplift"
-                ), ln=True)
-            pdf.set_text_color(*COLOR_DARK_GRAY)
+            pdf._ml(
+                f"{sugg.companion_name_en}  |  Row ratio: {sugg.row_ratio}  "
+                f"|  +{sugg.revenue_uplift_percent:.0f}% estimated revenue uplift",
+                line_h=6, style="B", color=COLOR_MID_GREEN
+            )
+            pdf._ml(sugg.benefit_en, line_h=5, size=9, indent=4)
             pdf.ln(2)
 
-    # ── Seasonal tips ──
+    # Seasonal tips
     pdf.section_title("Seasonal Planting Tips")
     for tip in r.seasonal_tips_en:
         pdf.bullet(tip)
     pdf.ln(3)
 
-    # ── Vertical farming ──
+    # Vertical farming
     pdf.section_title("Vertical Farming & Value Addition")
-    pdf.body_text(r.vertical_farming_en)
+    pdf._ml(r.vertical_farming_en, line_h=6)
 
-    # ── Disclaimer ──
+    # Disclaimer
     pdf.section_title("Disclaimer", color=COLOR_MID_GRAY)
-    pdf._font("", 8)
-    pdf.set_text_color(*COLOR_MID_GRAY)
-    pdf.multi_cell(0, 5, pdf._safe(
+    pdf._ml(
         "Generated by automated advisory system using MSP/FRP 2023-24 reference data. "
-        "Does not account for micro-climate variations, local pest pressure, or "
-        "real-time market fluctuations. Always verify with your local Krishi Vigyan "
-        "Kendra (KVK) or agriculture extension officer before financial decisions."
-    ))
+        "Does not account for micro-climate, local pest pressure, or real-time markets. "
+        "Verify with your local Krishi Vigyan Kendra (KVK) before financial decisions.",
+        line_h=5, size=8, color=COLOR_MID_GRAY
+    )
 
 
-# ── Hindi section builder ──────────────────────────────────────────────────────
+# ── LLM advisory section ───────────────────────────────────────────────────────
 
-def _build_hindi_section(pdf: FarmReport, r: RecommendationResult,
-                          farm_location: str):
+def _llm_section(pdf: FarmReport, advisory: str, lang: str = "en"):
+    if lang == "hi":
+        pdf.section_title("AI-संचालित अतिरिक्त सलाह", color=COLOR_AI_HEADER)
+        pdf._ml(
+            "OpenAI GPT द्वारा संचालित। आपके गणना किए गए खेत डेटा पर आधारित। "
+            "संख्याएं और जोखिम वर्गीकरण इंजन द्वारा निर्धारित हैं।",
+            line_h=5, size=8, color=COLOR_MID_GRAY
+        )
+    else:
+        pdf.section_title("AI-Powered Additional Advisory", color=COLOR_AI_HEADER)
+        pdf._ml(
+            "Powered by OpenAI GPT. Based on computed farm data only. "
+            "Numbers and risk classifications are determined by the rule engine.",
+            line_h=5, size=8, color=COLOR_MID_GRAY
+        )
+    pdf.ln(1)
+    pdf._ml(advisory, line_h=6)
+
+
+# ── Hindi section ──────────────────────────────────────────────────────────────
+
+def _hindi_section(pdf: FarmReport, r: RecommendationResult,
+                   farm_location: str):
     pdf.add_page()
 
-    # Hindi section divider header
-    pdf.set_fill_color(*COLOR_HINDI_HEADER)
-    pdf.rect(0, pdf.get_y() - 2, 210, 14, "F")
+    # Hindi section header band — use set_x(L_MARGIN) not set_xy(0, ...)
+    pdf.colored_band(COLOR_HINDI_HEADER, 12)
     pdf._font("B", 13)
     pdf.set_text_color(*COLOR_WHITE)
-    pdf.set_xy(0, pdf.get_y())
-    # Use multi_cell so Devanagari renders
-    pdf.multi_cell(0, 10, "  हिंदी अनुभाग — किसान सलाहकार रिपोर्ट")
+    pdf.set_x(L_MARGIN)
+    pdf.multi_cell(CONTENT_W, 12,
+                   "हिंदी अनुभाग — किसान सलाहकार रिपोर्ट")
     pdf.set_text_color(*COLOR_DARK_GRAY)
     pdf.ln(3)
 
-    # ── Hindi Hero box ──
+    # Hero band
     pdf.set_fill_color(*COLOR_LIGHT_GREEN_BG)
-    pdf.rect(14, pdf.get_y(), 182, 56, "F")
-    pdf.set_xy(18, pdf.get_y() + 3)
+    pdf.rect(L_MARGIN, pdf.get_y(), CONTENT_W, 58, "F")
+    pdf.ln(3)
 
-    # Crop name — multi_cell so Devanagari renders
-    pdf._font("B", 13)
-    pdf.set_text_color(*COLOR_MID_GREEN)
+    # Crop + location
     crop_line = f"{r.crop_name_hi}  |  {r.acreage:.1f} एकड़"
     if farm_location:
         crop_line += f"  |  {farm_location}"
-    pdf.set_x(18)
-    pdf.multi_cell(0, 8, crop_line)
-
+    pdf._ml(crop_line, line_h=9, size=13, style="B",
+            color=COLOR_MID_GREEN, indent=3)
     if r.soil_name_en:
-        pdf._font("", 9)
-        pdf.set_text_color(*COLOR_MID_GRAY)
-        pdf.set_x(18)
-        pdf.multi_cell(0, 6, f"मिट्टी: {r.soil_name_en}  |  जलवायु: {r.climate_zone}")
+        pdf._ml(f"मिट्टी: {r.soil_name_en}  |  जलवायु: {r.climate_zone}",
+                line_h=6, size=9, color=COLOR_MID_GRAY, indent=3)
+    pdf.ln(1)
 
-    pdf.set_x(18)
-    pdf.kpi_row_hi("सकल आय:",      f"Rs. {r.gross_revenue:,}")
-    pdf.set_x(18)
-    pdf.kpi_row_hi("कुल लागत:",    f"Rs. {r.total_cost:,}", color=COLOR_AMBER)
-    margin_color = COLOR_MID_GREEN if r.net_margin >= 0 else COLOR_RED
-    pdf.set_x(18)
-    pdf.kpi_row_hi("शुद्ध लाभ:",   f"Rs. {r.net_margin:,}", color=margin_color)
-    pdf.set_x(18)
-    pdf.kpi_row_hi("संभावित बचत:", f"Rs. {r.total_reducible_cost:,}",
-                   color=COLOR_MID_GREEN)
-    pdf.ln(6)
+    # KPI lines — use kpi_line (multi_cell based, safe for Devanagari)
+    pdf.kpi_line("सकल आय:",      f"Rs. {r.gross_revenue:,}")
+    pdf.kpi_line("कुल लागत:",    f"Rs. {r.total_cost:,}", color=COLOR_AMBER)
+    mc = COLOR_MID_GREEN if r.net_margin >= 0 else COLOR_RED
+    pdf.kpi_line("शुद्ध लाभ:",   f"Rs. {r.net_margin:,}", color=mc)
+    pdf.kpi_line("संभावित बचत:", f"Rs. {r.total_reducible_cost:,}",
+                 color=COLOR_MID_GREEN)
+    pdf.ln(4)
 
-    # ── Price info ──
+    # Price info
     pdf.section_title("मूल्य जानकारी", color=COLOR_HINDI_HEADER)
-    price_type_label_hi = {
-        "msp":     "MSP 2023-24 (सरकारी न्यूनतम समर्थन मूल्य)",
-        "frp":     "FRP 2023-24 (सरकारी उचित एवं लाभकारी मूल्य)",
-        "market":  "बाजार औसत (रूढ़िवादी अनुमान — वास्तविक भिन्न हो सकता है)",
-        "default": "संदर्भ मूल्य (MSP/FRP 2023-24)",
-    }.get(r.price_type, r.price_type.upper())
-    pdf.body_text(
+    pdf._ml(
         f"उपयोग किया गया मूल्य: Rs. {r.price_per_quintal:,} प्रति क्विंटल\n"
-        f"आधार: {price_type_label_hi}"
+        f"आधार: {_price_label(r.price_type, 'hi')}",
+        line_h=6
     )
 
-    # ── Summary ──
+    # Summary
     pdf.section_title("सारांश", color=COLOR_HINDI_HEADER)
     narrative_hi = r.narrative_hi.replace(" मिट्टी मिट्टी ", " मिट्टी ")
-    pdf.body_text(narrative_hi)
+    pdf._ml(narrative_hi, line_h=6)
 
     if r.risk_flag:
-        pdf.set_fill_color(*COLOR_RED)
+        pdf.ln(2)
+        pdf.colored_band(COLOR_RED, 9)
         pdf.set_text_color(*COLOR_WHITE)
         pdf._font("B", 10)
-        pdf.multi_cell(0, 8,
-            "  चेतावनी: शुद्ध मार्जिन Rs. 5,000/एकड़ से कम। तत्काल कदम उठाएं।")
+        pdf.set_x(L_MARGIN + 2)
+        pdf.multi_cell(CONTENT_W - 2, 9,
+            "चेतावनी: शुद्ध मार्जिन Rs. 5,000/एकड़ से कम। तत्काल कदम उठाएं।")
         pdf.set_text_color(*COLOR_DARK_GRAY)
         pdf.ln(2)
 
-    # ── Cost table ──
+    # Cost table
     pdf.section_title("लागत विश्लेषण और बचत के अवसर", color=COLOR_HINDI_HEADER)
-    pdf._draw_cost_table(use_hindi=True)
+    pdf._ml("पूर्ण सुझाव नीचे 'कम लागत तकनीकें' अनुभाग में हैं।",
+            line_h=5, size=8, color=COLOR_MID_GRAY)
+    pdf.ln(1)
+    pdf.cost_table(use_hindi=True)
     pdf.ln(2)
 
-    # ── Tips ──
+    # Low-cost tips
     pdf.section_title("कम लागत और प्राचीन तकनीकें", color=COLOR_HINDI_HEADER)
     for tip in r.low_cost_tips_hi:
         pdf.bullet(tip)
     pdf.ln(3)
 
-    # ── Intercropping ──
+    # Intercropping
     if r.intercrop_suggestions:
         pdf.section_title("अंतरफसल सुझाव", color=COLOR_HINDI_HEADER)
         for sugg in r.intercrop_suggestions:
-            pdf._font("B", 9)
-            pdf.set_text_color(*COLOR_MID_GREEN)
-            pdf.multi_cell(0, 6,
-                f"{sugg.companion_name_hi}  (पंक्ति अनुपात: {sugg.row_ratio})")
-            pdf.set_text_color(*COLOR_DARK_GRAY)
-            pdf._font("", 8)
-            pdf.multi_cell(0, 5, sugg.benefit_hi)
-            pdf._font("B", 8)
-            pdf.set_text_color(*COLOR_MID_GREEN)
-            pdf.multi_cell(0, 5,
-                f"+{sugg.revenue_uplift_percent:.0f}% अनुमानित राजस्व वृद्धि")
-            pdf.set_text_color(*COLOR_DARK_GRAY)
+            pdf._ml(
+                f"{sugg.companion_name_hi}  |  अनुपात: {sugg.row_ratio}  "
+                f"|  +{sugg.revenue_uplift_percent:.0f}% अनुमानित राजस्व वृद्धि",
+                line_h=6, style="B", color=COLOR_MID_GREEN
+            )
+            pdf._ml(sugg.benefit_hi, line_h=5, size=9, indent=4)
             pdf.ln(2)
 
-    # ── Seasonal tips ──
+    # Seasonal tips
     pdf.section_title("मौसमी रोपण सुझाव", color=COLOR_HINDI_HEADER)
     for tip in r.seasonal_tips_hi:
         pdf.bullet(tip)
     pdf.ln(3)
 
-    # ── Vertical farming ──
+    # Vertical farming
     pdf.section_title("ऊर्ध्वाधर खेती / मूल्य संवर्धन", color=COLOR_HINDI_HEADER)
-    pdf.body_text(r.vertical_farming_hi)
+    pdf._ml(r.vertical_farming_hi, line_h=6)
 
-    # ── Disclaimer ──
+    # Disclaimer
     pdf.section_title("अस्वीकरण", color=COLOR_MID_GRAY)
-    pdf._font("", 8)
-    pdf.set_text_color(*COLOR_MID_GRAY)
-    pdf.multi_cell(0, 5,
+    pdf._ml(
         "यह रिपोर्ट स्वचालित सलाहकार प्रणाली द्वारा MSP/FRP 2023-24 संदर्भ डेटा "
-        "का उपयोग करके तैयार की गई है। सूक्ष्म-जलवायु, स्थानीय कीट दबाव, या "
-        "वास्तविक समय बाजार उतार-चढ़ाव के लिए जिम्मेदार नहीं है। वित्तीय निर्णय "
-        "लेने से पहले अपने स्थानीय कृषि विभाग या KVK से सत्यापित करें।"
+        "का उपयोग करके तैयार की गई है। वित्तीय निर्णय लेने से पहले अपने स्थानीय "
+        "कृषि विभाग या KVK से सत्यापित करें।",
+        line_h=5, size=8, color=COLOR_MID_GRAY
     )
-
-
-# ── LLM advisory section builder ──────────────────────────────────────────────
-
-def _build_llm_section(pdf: FarmReport, llm_advisory: str, lang: str = "en"):
-    """
-    Renders the AI-generated advisory into the PDF.
-    Called only when llm_advisory is a non-empty string.
-    Placed after the main sections, before the disclaimer.
-    Works in both English and Hindi depending on lang.
-    """
-    if lang == "hi":
-        pdf.section_title("AI-संचालित अतिरिक्त सलाह", color=(74, 20, 140))
-        pdf._font("", 8)
-        pdf.set_text_color(*COLOR_MID_GRAY)
-        pdf.multi_cell(0, 4.5,
-            "OpenAI GPT द्वारा संचालित। आपके गणना किए गए खेत डेटा पर आधारित। "
-            "संख्याएं और जोखिम वर्गीकरण इंजन द्वारा निर्धारित — AI केवल व्याख्या और "
-            "रणनीति प्रदान करती है।")
-        pdf.ln(2)
-        pdf.set_text_color(*COLOR_DARK_GRAY)
-        pdf.body_text(llm_advisory)
-    else:
-        pdf.section_title("AI-Powered Additional Advisory", color=(74, 20, 140))
-        pdf._font("", 8)
-        pdf.set_text_color(*COLOR_MID_GRAY)
-        pdf.multi_cell(0, 4.5,
-            "Powered by OpenAI GPT. Based on your computed farm data only. "
-            "All numbers and risk classifications are determined by the rule engine — "
-            "AI provides explanation and strategy enrichment only.")
-        pdf.ln(2)
-        pdf.set_text_color(*COLOR_DARK_GRAY)
-        pdf.body_text(llm_advisory)
 
 
 # ── Public entry point ─────────────────────────────────────────────────────────
@@ -520,47 +489,44 @@ def generate_pdf(
     llm_advisory_hi: str = "",
 ) -> bytes:
     """
-    Generate complete dual-language PDF.
+    Generate complete dual-language PDF report.
 
     Args:
         result          : RecommendationResult from the engine
-        farm_location   : human-readable location string (lat/lng)
-        llm_advisory_en : AI advisory text in English (empty = section omitted)
-        llm_advisory_hi : AI advisory text in Hindi (empty = section omitted)
+        farm_location   : human-readable location string
+        llm_advisory_en : AI advisory in English — included if non-empty
+        llm_advisory_hi : AI advisory in Hindi — included if non-empty
 
     Always produces English section.
     Appends Hindi section if DejaVuSans.ttf is in fonts/.
-    LLM advisory sections are included only when non-empty strings are passed.
-    Returns bytes ready for st.download_button.
+    Returns bytes for st.download_button.
     """
     pdf = FarmReport(result, farm_location)
 
-    _build_english_section(pdf, result, farm_location)
+    _english_section(pdf, result, farm_location)
 
-    # LLM advisory English — appended after main English section
     if llm_advisory_en and llm_advisory_en.strip():
-        _build_llm_section(pdf, llm_advisory_en.strip(), lang="en")
+        _llm_section(pdf, llm_advisory_en.strip(), lang="en")
 
     if pdf._unicode_loaded:
-        _build_hindi_section(pdf, result, farm_location)
-        # LLM advisory Hindi — appended after Hindi section
+        _hindi_section(pdf, result, farm_location)
         if llm_advisory_hi and llm_advisory_hi.strip():
-            _build_llm_section(pdf, llm_advisory_hi.strip(), lang="hi")
+            _llm_section(pdf, llm_advisory_hi.strip(), lang="hi")
     else:
         pdf.add_page()
-        pdf.set_font("Helvetica", "B", 14)
+        pdf.set_font("Helvetica", "B", 13)
         pdf.set_text_color(*COLOR_HINDI_HEADER)
-        pdf.cell(0, 12, "Hindi Section Not Available in This Build", ln=True)
+        pdf.set_x(L_MARGIN)
+        pdf.multi_cell(CONTENT_W, 10, "Hindi Section Not Available in This Build")
         pdf.set_font("Helvetica", "", 10)
         pdf.set_text_color(*COLOR_DARK_GRAY)
-        pdf.multi_cell(0, 6,
-            "To enable the Hindi section in your PDF reports:\n\n"
-            "1. Download DejaVuSans.ttf from: https://dejavu-fonts.github.io/\n"
-            "2. Optionally also download DejaVuSans-Bold.ttf\n"
-            "3. Place both files in the fonts/ directory of this repository\n"
-            "4. Redeploy the app\n\n"
-            "The Hindi section activates automatically once the font file is present.\n"
-            "Hindi text is fully available in the Streamlit web interface already."
+        pdf.set_x(L_MARGIN)
+        pdf.multi_cell(CONTENT_W, 6,
+            "To enable Hindi PDF:\n"
+            "1. Download DejaVuSans.ttf from https://dejavu-fonts.github.io/\n"
+            "2. Place it in the fonts/ directory of this repository\n"
+            "3. Redeploy the app\n\n"
+            "Hindi is fully available in the Streamlit web interface already."
         )
 
     return bytes(pdf.output())
