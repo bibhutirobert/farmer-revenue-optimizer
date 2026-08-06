@@ -1,4 +1,5 @@
 import streamlit as st
+from core.auth_service import render_account_widget, is_logged_in, current_user_name
 
 st.set_page_config(
     page_title="Farmer Revenue Optimizer",
@@ -9,6 +10,8 @@ st.set_page_config(
 
 if "lang" not in st.session_state:
     st.session_state["lang"] = "en"
+
+render_account_widget(st.session_state["lang"])
 
 
 def lang_toggle():
@@ -69,6 +72,10 @@ else:
     )
     if st.button(" Get Started — Select Your Field", type="primary", use_container_width=True):
         st.switch_page("pages/1_Land_Selection.py")
+    if is_logged_in():
+        st.caption(f"Welcome back, {current_user_name()}.")
+        if st.button("📂 View My Saved Reports"):
+            st.switch_page("pages/5_My_Reports.py")
 
 st.divider()
 col1, col2, col3 = st.columns(3)

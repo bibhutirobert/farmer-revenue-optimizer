@@ -1,22 +1,31 @@
 """
-Usage Event Logger — V3 with persistent Google Sheets backend
-=============================================================
-Primary:  POST to Google Apps Script Web App → appends row to Google Sheet
-Fallback: Write to data/usage_log.jsonl (local/session only on Streamlit Cloud)
+Usage Event Logger — V4 with Supabase as the primary persistent backend
+=========================================================================
+Primary:    Insert into Supabase `usage_events` table (core/db_service.py)
+Secondary:  POST to Google Apps Script Web App → appends row to Google Sheet
+            (kept for backward compatibility with existing setups)
+Fallback:   Write to data/usage_log.jsonl (local/session only on Streamlit Cloud)
 
 To activate persistent logging:
-  Add to Streamlit Cloud Secrets:
+  Add to .streamlit secrets:
+    [supabase]
+    url = "https://YOUR_PROJECT.supabase.co"
+    service_role_key = "..."
+  and/or (optional, legacy):
     [logger]
     sheet_url = "https://script.google.com/macros/s/YOUR_ID/exec"
 
-If secret is missing or POST fails, falls back to local file silently.
-The app never crashes due to a logging failure.
+Every sink is best-effort and independent — a missing secret or failed
+POST/insert falls through silently. The app never crashes due to a
+logging failure.
 """
 
 import json
 import os
 from datetime import datetime, timezone
 from typing import Optional
+
+from core.db_service import save_usage_event as _save_to_db
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 LOG_FILE = os.path.join(DATA_DIR, "usage_log.jsonl")
@@ -74,15 +83,21 @@ def log_recommendation_event(
     climate_zone: str = "unknown",
     llm_used: bool = False,
     irrigation_type: str = "unknown",
+    owner_email: Optional[str] = None,
 ) -> None:
     """
-    Log one recommendation event.
-    Tries Google Sheets first. Falls back to local file.
+    Log one recommendation event to every configured sink:
+    Supabase (primary) + Google Sheet (legacy, optional) + local file (backup).
+    Each sink is independent and best-effort.
     Never raises — logging must never crash the app.
+
+    owner_email: pass the signed-in farmer's email (st.user.email) to
+    attribute the event to an account; leave None for anonymous/guest usage.
     """
     try:
         event = {
             "ts":             datetime.now(timezone.utc).isoformat(),
+            "owner_email":    owner_email.strip().lower() if owner_email else None,
             "crop":           crop,
             "state":          state,
             "season":         season,
@@ -98,8 +113,8 @@ def log_recommendation_event(
             "llm_used":       llm_used,
             "irrigation":     irrigation_type,
         }
-        # Try persistent sheet first
-        posted = _post_to_sheet(event)
+        _save_to_db(event)
+        _post_to_sheet(event)
         # Always write local file too (session-level backup)
         _write_to_file(event)
     except Exception:

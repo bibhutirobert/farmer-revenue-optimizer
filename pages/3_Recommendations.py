@@ -10,9 +10,13 @@ from core.models import RecommendationResult, FarmInput
 from core.llm_service import enrich_advisory, translate_advisory, is_llm_available
 from core.logger import log_recommendation_event
 from core.price_service import get_price_label
+from core.auth_service import is_logged_in, current_user_email, render_account_widget
+from core.db_service import save_farm_record
+from core.storage_service import upload_report_pdf
 from utils.pdf_utils import build_pdf_bytes
 
 st.set_page_config(page_title="Recommendations | FRO", page_icon="📊", layout="wide")
+render_account_widget()
 
 if "lang" not in st.session_state:
     st.session_state["lang"] = "en"
@@ -72,6 +76,7 @@ with st.spinner("Calculating..." if lang == "en" else "गणना हो र�
         st.stop()
 
 # ── Log usage event (silent) ──────────────────────────────────────────────────
+_owner_email = current_user_email()
 log_recommendation_event(
     crop=farm_input.crop, state=farm_input.state, season=farm_input.season,
     acreage=farm_input.acreage, gross_revenue=result.gross_revenue,
@@ -79,6 +84,7 @@ log_recommendation_event(
     risk_flag=result.risk_flag, price_source=result.price_source,
     soil_code=result.soil_code, climate_zone=result.climate_zone,
     llm_used=False, irrigation_type=farm_input.irrigation_type,
+    owner_email=_owner_email,
 )
 
 # ── Title ──────────────────────────────────────────────────────────────────────
@@ -253,6 +259,7 @@ if is_llm_available():
             risk_flag=result.risk_flag, price_source=result.price_source,
             soil_code=result.soil_code, climate_zone=result.climate_zone,
             llm_used=True, irrigation_type=farm_input.irrigation_type,
+            owner_email=_owner_email,
         )
     else:
         st.info(
@@ -288,13 +295,42 @@ with st.spinner("Generating PDF..." if lang=="en" else "PDF तैयार ह�
         pdf_bytes = None
 
 if pdf_bytes:
+    _pdf_filename = f"farm_report_{farm_input.crop}_{farm_input.acreage:.1f}acres.pdf"
     st.download_button(
         label="⬇️ Download PDF Report (English + Hindi)" if lang=="en"
               else "⬇️ PDF रिपोर्ट डाउनलोड करें (अंग्रेज़ी + हिंदी)",
         data=pdf_bytes,
-        file_name=f"farm_report_{farm_input.crop}_{farm_input.acreage:.1f}acres.pdf",
+        file_name=_pdf_filename,
         mime="application/pdf", type="primary",
     )
+
+    # ── Save to account (only if signed in — see core/auth_service.py) ────────
+    if is_logged_in() and _owner_email:
+        _save_key = f"_saved_{_cache_key}"
+        if st.session_state.get(_save_key):
+            st.caption("✅ Saved to your account." if lang == "en" else "✅ आपके खाते में सहेजा गया।")
+        elif st.button("💾 Save this report to My Reports" if lang == "en"
+                       else "💾 इस रिपोर्ट को मेरी रिपोर्ट्स में सहेजें"):
+            storage_path = upload_report_pdf(_owner_email, _pdf_filename, pdf_bytes)
+            record_id = save_farm_record(_owner_email, {
+                "crop": farm_input.crop, "acreage": farm_input.acreage,
+                "state": farm_input.state, "season": farm_input.season,
+                "irrigation_type": farm_input.irrigation_type,
+                "lat": farm_input.lat, "lng": farm_input.lng,
+                "soil_type": result.soil_code, "climate_zone": result.climate_zone,
+                "gross_revenue": result.gross_revenue, "total_cost": result.total_cost,
+                "net_margin": result.net_margin, "risk_flag": result.risk_flag,
+                "report_storage_path": storage_path,
+            })
+            if record_id:
+                st.session_state[_save_key] = True
+                st.rerun()
+            else:
+                st.warning(
+                    "Could not save right now — database not configured or unreachable."
+                    if lang == "en"
+                    else "अभी सहेज नहीं सका — डेटाबेस कॉन्फ़िगर नहीं है या पहुंच योग्य नहीं है।"
+                )
 
 # ── Navigation ─────────────────────────────────────────────────────────────────
 st.divider()

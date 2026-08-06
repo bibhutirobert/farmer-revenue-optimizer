@@ -39,13 +39,18 @@ farmer-revenue-optimizer-cloud/
 ├── pages/
 │   ├── 1_Land_Selection.py         # Step 1: satellite map + lat/lng capture
 │   ├── 2_Farm_Details.py           # Step 2: crop + cost input form
-│   └── 3_Recommendations.py        # Step 3: results + PDF download
+│   ├── 3_Recommendations.py        # Step 3: results + PDF download + save-to-account
+│   ├── 4_Dashboard.py              # Internal risk panel — admin-only (Google sign-in gate)
+│   └── 5_My_Reports.py             # Signed-in farmer's saved report history
 ├── core/                           # Pure Python domain layer (no Streamlit dependency)
 │   ├── models.py
 │   ├── crop_data.py
 │   ├── cost_calculator.py
 │   ├── recommendation_engine.py
 │   ├── report_generator.py
+│   ├── auth_service.py             # Google sign-in (OIDC) + admin allowlist gate
+│   ├── db_service.py                # Supabase Postgres client (usage events, farm records)
+│   ├── storage_service.py          # Supabase Storage client (saved PDF reports)
 │   └── scene_provider.py           # Abstract 3D hook (Skyfall-GS ready)
 ├── utils/
 │   ├── map_utils.py
@@ -53,11 +58,16 @@ farmer-revenue-optimizer-cloud/
 ├── data/
 │   ├── crops.json                  # 15 major Indian crops, MSP/FRP 2023-24
 │   └── intercrop_rules.json        # 13 intercrop compatibility rules
+├── supabase/
+│   └── schema.sql                  # Postgres schema + RLS + storage bucket setup
 ├── tests/
 │   ├── test_cost_calculator.py
 │   ├── test_recommendation_engine.py
 │   ├── test_report_generator.py
-│   └── test_map_utils.py
+│   ├── test_map_utils.py
+│   ├── test_auth_service.py
+│   ├── test_db_service.py
+│   └── test_storage_service.py
 ├── .streamlit/config.toml
 ├── requirements.txt
 ├── pytest.ini
@@ -100,7 +110,8 @@ pytest
 4. Set repository, branch `main`, main file `app.py`
 5. Click **Deploy**
 
-No secrets or environment variables required for v1.
+No secrets required to run the core advisory flow. Sign-in, saved reports, and
+the admin dashboard are optional — see "Security & data protection" below.
 
 ---
 
@@ -109,6 +120,48 @@ No secrets or environment variables required for v1.
 1. Create a new Space at https://huggingface.co/spaces
 2. Select **Streamlit** as the SDK
 3. Push the repo — HF Spaces auto-detects `requirements.txt` and `app.py`
+
+---
+
+## Security & data protection
+
+The app runs entirely server-side (Streamlit) — a browser never talks to the
+database or storage directly, only this Python backend does. That shapes the
+whole security model:
+
+| Layer | How it's protected |
+|---|---|
+| **Secrets** | Never hardcoded. Read from `.streamlit/secrets.toml` (git-ignored) or the platform's secrets manager. `.streamlit/secrets.toml.example` ships only placeholder values. |
+| **Auth** | Google Sign-In via Streamlit's native OIDC (`core/auth_service.py`). Farmers can optionally sign in to save their report history; the internal Dashboard requires sign-in **and** an email on the `[admin] emails` allowlist. Every gate fails closed — unconfigured or logged-out always means "denied", never "allowed". |
+| **Database** | Supabase Postgres (`core/db_service.py`), connected with the **service role** key (server-side only, never sent to the browser). Row Level Security is enabled on every table with no policies granted to `anon`/`authenticated` — even a leaked public key returns zero rows. Per-user access (a farmer only sees their own saved reports) is enforced in application code, scoped by the authenticated `owner_email`. See `supabase/schema.sql` for the full rationale. |
+| **Storage** | Supabase Storage bucket for saved PDF reports (`core/storage_service.py`) is private, objects are namespaced by a one-way hash of the owner's email (never the raw address), and access is only ever via short-lived (1 hour) signed URLs minted server-side for the authenticated owner. |
+| **Transport** | Streamlit Cloud / any standard host serves the app over HTTPS by default. |
+| **Logging** | Usage events (crop, margin, risk flag — no farmer-identifying data unless signed in) go to Supabase; a legacy Google Sheets webhook and local file remain as optional/fallback sinks. Every sink is best-effort — a missing secret or failed write never crashes the app. |
+
+### Authentication setup
+
+1. In Google Cloud Console → APIs & Services → Credentials, create an OAuth
+   2.0 Client ID (type: Web application). Add an authorized redirect URI —
+   `http://localhost:8501/oauth2callback` for local dev, or
+   `https://<your-app>.streamlit.app/oauth2callback` in production.
+2. Add the `[auth]` block to `.streamlit/secrets.toml` (see
+   `secrets.toml.example`) with `client_id`, `client_secret`, `redirect_uri`,
+   and a random `cookie_secret`.
+3. Add your own email under `[admin] emails` to unlock the Dashboard.
+
+### Database & storage setup (Supabase)
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. Open the SQL editor and run `supabase/schema.sql` — creates
+   `usage_events`, `farm_records`, and enables RLS on both.
+3. Under Storage, create a bucket named `farm-reports` and leave **Public**
+   turned **off**.
+4. Add the `[supabase]` block to secrets with your project `url` and the
+   **service role** key (Project Settings → API) — not the anon/public key.
+
+Everything above is optional and additive: with none of it configured, the
+app runs exactly as before in guest mode — full advisory flow for everyone,
+nothing saved, admin pages locked to everyone.
 
 ---
 
