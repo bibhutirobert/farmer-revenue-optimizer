@@ -81,6 +81,35 @@ create index if not exists farm_records_owner_idx on farm_records (owner_email, 
 alter table farm_records enable row level security;
 -- No policies granted -> anon/authenticated get zero rows. Service role only.
 
+-- ── profiles ─────────────────────────────────────────────────────────────────
+-- One row per signed-in user (farmer or admin), keyed by email. Populated by
+-- core/auth_service.py.sync_profile_once() from the Google OIDC claims on
+-- every new sign-in — this is the "complete picture" record: everything
+-- Google's identity token gives us, plus the app-specific fields (phone
+-- number for the future OTP flow, preferred language) that the OAuth claims
+-- don't carry. Admin status is intentionally NOT stored here — it stays
+-- solely in the [admin] emails allowlist in secrets, so a database row can
+-- never be edited to grant admin access.
+
+create table if not exists profiles (
+    email             text primary key,
+    google_sub        text,                  -- Google's stable OIDC subject id
+    full_name         text,
+    given_name        text,
+    family_name       text,
+    picture_url       text,
+    locale            text,
+    preferred_lang    text,                  -- 'en' | 'hi', last language used in-app
+    phone_number      text,                  -- captured now, unverified — see core/phone_auth_service.py
+    phone_verified    boolean not null default false,
+    state             text,                  -- self-reported home state, optional
+    first_login_at    timestamptz not null default now(),
+    last_login_at     timestamptz not null default now()
+);
+
+alter table profiles enable row level security;
+-- No policies granted -> anon/authenticated get zero rows. Service role only.
+
 -- ── Storage bucket for saved PDF reports ────────────────────────────────────
 -- Create via the Supabase dashboard (Storage -> New bucket) or the snippet
 -- below. MUST be private (public = false). Objects are named

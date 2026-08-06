@@ -110,8 +110,10 @@ pytest
 4. Set repository, branch `main`, main file `app.py`
 5. Click **Deploy**
 
-No secrets required to run the core advisory flow. Sign-in, saved reports, and
-the admin dashboard are optional — see "Security & data protection" below.
+**Google Sign-In must be configured before the advisory flow will work** — an
+account is required for every farmer (see "Security & data protection" below).
+Add `[auth]`, `[admin]`, and `[supabase]` to your app's Secrets before or
+right after deploying.
 
 ---
 
@@ -132,11 +134,24 @@ whole security model:
 | Layer | How it's protected |
 |---|---|
 | **Secrets** | Never hardcoded. Read from `.streamlit/secrets.toml` (git-ignored) or the platform's secrets manager. `.streamlit/secrets.toml.example` ships only placeholder values. |
-| **Auth** | Google Sign-In via Streamlit's native OIDC (`core/auth_service.py`). Farmers can optionally sign in to save their report history; the internal Dashboard requires sign-in **and** an email on the `[admin] emails` allowlist. Every gate fails closed — unconfigured or logged-out always means "denied", never "allowed". |
+| **Auth** | Google Sign-In via Streamlit's native OIDC (`core/auth_service.py`) is **mandatory** — every farmer must have an account before using Land Selection, Farm Details, Recommendations, or My Reports (`require_login()`). The internal Dashboard needs sign-in **plus** an email on the `[admin] emails` allowlist (`require_admin()`), and admin status lives only in that secrets file, never in the database, so it can't be escalated by editing a row. Every gate fails closed — unconfigured or logged-out always means "denied", never "allowed" or silent guest access. A second sign-in path, mobile number + OTP, is planned for farmers without Google accounts; the data field and UI capture already exist, the OTP provider itself is a documented stub (`core/phone_auth_service.py`). |
 | **Database** | Supabase Postgres (`core/db_service.py`), connected with the **service role** key (server-side only, never sent to the browser). Row Level Security is enabled on every table with no policies granted to `anon`/`authenticated` — even a leaked public key returns zero rows. Per-user access (a farmer only sees their own saved reports) is enforced in application code, scoped by the authenticated `owner_email`. See `supabase/schema.sql` for the full rationale. |
 | **Storage** | Supabase Storage bucket for saved PDF reports (`core/storage_service.py`) is private, objects are namespaced by a one-way hash of the owner's email (never the raw address), and access is only ever via short-lived (1 hour) signed URLs minted server-side for the authenticated owner. |
 | **Transport** | Streamlit Cloud / any standard host serves the app over HTTPS by default. |
-| **Logging** | Usage events (crop, margin, risk flag — no farmer-identifying data unless signed in) go to Supabase; a legacy Google Sheets webhook and local file remain as optional/fallback sinks. Every sink is best-effort — a missing secret or failed write never crashes the app. |
+| **Logging** | Usage events (crop, margin, risk flag, and the signed-in `owner_email`) go to Supabase; a legacy Google Sheets webhook and local file remain as optional/fallback sinks. Every sink is best-effort — a missing secret or failed write never crashes the app. |
+| **Data minimization** | The farmer-facing app never exposes another user's data — "My Reports" is scoped to the signed-in account only. Portfolio-level analytics, the full account list (`profiles` table — name, email, phone, login history), and aggregate risk data are visible on the Dashboard to admins only; nothing about other farmers is ever shown to a farmer. |
+
+### What's captured about each signed-in user
+
+On every sign-in, `core/auth_service.sync_profile_once()` upserts a `profiles`
+row (`supabase/schema.sql`) with everything Google's OIDC token provides —
+email, full/given/family name, profile picture URL, locale, and the stable
+Google subject id — plus app-specific fields the token doesn't carry:
+preferred language, self-reported state, and an optional mobile number
+(captured on Page 1, unverified until OTP is wired in). This is the
+"complete picture" record referenced above; admins can browse it under
+**Dashboard → Farmer Accounts**, farmers only ever see their own profile
+implicitly through their own saved reports.
 
 ### Authentication setup
 
@@ -153,15 +168,17 @@ whole security model:
 
 1. Create a free project at [supabase.com](https://supabase.com).
 2. Open the SQL editor and run `supabase/schema.sql` — creates
-   `usage_events`, `farm_records`, and enables RLS on both.
+   `usage_events`, `farm_records`, `profiles`, and enables RLS on all three.
 3. Under Storage, create a bucket named `farm-reports` and leave **Public**
    turned **off**.
 4. Add the `[supabase]` block to secrets with your project `url` and the
    **service role** key (Project Settings → API) — not the anon/public key.
 
-Everything above is optional and additive: with none of it configured, the
-app runs exactly as before in guest mode — full advisory flow for everyone,
-nothing saved, admin pages locked to everyone.
+`[auth]` is required — without it, sign-in is unavailable and the entire
+farmer flow (Land Selection onward) stays locked, by design. `[supabase]` is
+additive on top of that: without it, sign-in still works but nothing is
+saved (no history, no admin account list) and the Dashboard falls back to
+its synthetic demo dataset.
 
 ---
 

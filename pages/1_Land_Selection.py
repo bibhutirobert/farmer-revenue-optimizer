@@ -14,11 +14,18 @@ from utils.map_utils import (
     validate_india_bounds, geocode_india, reverse_geocode_state,
 )
 from core.scene_provider import default_scene_provider
+from core.auth_service import require_login, current_user_email, render_account_widget
+from core.db_service import get_profile, save_phone_number
+from core.phone_auth_service import is_otp_available
 
 st.set_page_config(page_title="Land Selection | FRO", page_icon="🗺️", layout="wide")
 
 if "lang" not in st.session_state:
     st.session_state["lang"] = "en"
+
+# ── Sign-in required for the whole farmer flow ─────────────────────────────────
+require_login(st.session_state["lang"])
+render_account_widget(st.session_state["lang"])
 
 col_title, col_lang = st.columns([8, 2])
 with col_lang:
@@ -59,6 +66,37 @@ with st.expander("ℹ️ How to use the map" if lang == "en" else "ℹ️ मा
         4. Click **"Confirm this location"** — state, soil type, and climate auto-detected
         5. Once green ✅ appears, click **Next**
         """)
+
+# ── Mobile number (optional today, groundwork for OTP sign-in later) ──────────
+_owner_email = current_user_email()
+_profile = get_profile(_owner_email) if _owner_email else None
+if _owner_email and not (_profile and _profile.get("phone_number")):
+    with st.expander(
+        "📱 Add your mobile number (optional)" if lang == "en"
+        else "📱 अपना मोबाइल नंबर जोड़ें (वैकल्पिक)",
+        expanded=False,
+    ):
+        st.caption(
+            "For future SMS updates. OTP verification is coming soon — for now "
+            "this just saves the number to your account." if lang == "en"
+            else "भविष्य के SMS अपडेट के लिए। OTP सत्यापन जल्द आ रहा है — फिलहाल "
+                 "यह केवल नंबर आपके खाते में सहेजता है।"
+        )
+        phone_input = st.text_input(
+            "Mobile number" if lang == "en" else "मोबाइल नंबर",
+            placeholder="+91XXXXXXXXXX", key="phone_input",
+        )
+        if not is_otp_available():
+            st.caption("ℹ️ OTP verification: coming soon." if lang == "en" else "ℹ️ OTP सत्यापन: जल्द आ रहा है।")
+        if st.button("Save number" if lang == "en" else "नंबर सहेजें", key="save_phone_btn"):
+            if phone_input.strip():
+                if save_phone_number(_owner_email, phone_input.strip()):
+                    st.success("Saved." if lang == "en" else "सहेजा गया।")
+                else:
+                    st.warning(
+                        "Could not save — database not configured or unreachable."
+                        if lang == "en" else "सहेज नहीं सका — डेटाबेस अनुपलब्ध।"
+                    )
 
 # ── Search box ─────────────────────────────────────────────────────────────────
 st.markdown("---")

@@ -7,7 +7,7 @@ how ownership is enforced server-side).
 """
 import streamlit as st
 import pandas as pd
-from core.auth_service import is_logged_in, is_auth_configured, current_user_email, render_account_widget
+from core.auth_service import require_login, current_user_email, render_account_widget
 from core.db_service import get_farm_history, delete_farm_record, is_db_configured
 from core.storage_service import get_signed_url
 from core.crop_data import get_crop_display_name
@@ -18,25 +18,10 @@ if "lang" not in st.session_state:
     st.session_state["lang"] = "en"
 lang = st.session_state["lang"]
 
+require_login(lang)
 render_account_widget(lang)
 
 st.title("📂 My Reports" if lang == "en" else "📂 मेरी रिपोर्ट्स")
-
-if not is_auth_configured():
-    st.info(
-        "Sign-in isn't configured for this deployment yet, so saved reports aren't available."
-        if lang == "en"
-        else "इस डिप्लॉयमेंट के लिए साइन-इन अभी कॉन्फ़िगर नहीं है, इसलिए सहेजी गई रिपोर्ट उपलब्ध नहीं हैं।"
-    )
-    st.stop()
-
-if not is_logged_in():
-    st.warning(
-        "Sign in with Google (sidebar) to see farm runs you've saved."
-        if lang == "en"
-        else "अपने सहेजे गए खेत रन देखने के लिए Google से साइन इन करें (साइडबार)।"
-    )
-    st.stop()
 
 if not is_db_configured():
     st.info(
@@ -51,9 +36,9 @@ records = get_farm_history(owner_email, limit=50)
 
 if not records:
     st.info(
-        "No saved reports yet. Run the advisory flow and click 'Save this report' on the results page."
+        "No saved reports yet. Every completed advisory run is saved here automatically."
         if lang == "en"
-        else "अभी तक कोई सहेजी गई रिपोर्ट नहीं। सलाहकार प्रक्रिया चलाएं और परिणाम पृष्ठ पर 'रिपोर्ट सहेजें' क्लिक करें।"
+        else "अभी तक कोई सहेजी गई रिपोर्ट नहीं। हर पूर्ण सलाहकार रन यहाँ स्वतः सहेजा जाता है।"
     )
     st.stop()
 

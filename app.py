@@ -48,8 +48,16 @@ if lang == "hi":
         > वित्तीय निर्णय लेने से पहले अपने स्थानीय कृषि अधिकारी से सत्यापित करें।
         """
     )
-    if st.button(" शुरू करें — खेत का स्थान चुनें", type="primary", use_container_width=True):
-        st.switch_page("pages/1_Land_Selection.py")
+    if is_logged_in():
+        if st.button(" शुरू करें — खेत का स्थान चुनें", type="primary", use_container_width=True):
+            st.switch_page("pages/1_Land_Selection.py")
+        st.caption(f"स्वागत है, {current_user_name()}।")
+        if st.button("📂 मेरी सहेजी गई रिपोर्ट्स देखें"):
+            st.switch_page("pages/5_My_Reports.py")
+    else:
+        st.info("🔑 शुरू करने के लिए साइन इन करें — यह ऐप का उपयोग करने के लिए आवश्यक है।")
+        if st.button("🔑 Google से साइन इन करें", type="primary", use_container_width=True):
+            st.login("google")
 else:
     st.title("🌾 Farmer Revenue Optimizer")
     st.subheader("Higher income, lower costs — for your farm, in your language")
@@ -70,12 +78,16 @@ else:
         > before making financial decisions.
         """
     )
-    if st.button(" Get Started — Select Your Field", type="primary", use_container_width=True):
-        st.switch_page("pages/1_Land_Selection.py")
     if is_logged_in():
+        if st.button(" Get Started — Select Your Field", type="primary", use_container_width=True):
+            st.switch_page("pages/1_Land_Selection.py")
         st.caption(f"Welcome back, {current_user_name()}.")
         if st.button("📂 View My Saved Reports"):
             st.switch_page("pages/5_My_Reports.py")
+    else:
+        st.info("🔑 Sign in to get started — an account is required to use this app.")
+        if st.button("🔑 Sign in with Google", type="primary", use_container_width=True):
+            st.login("google")
 
 st.divider()
 col1, col2, col3 = st.columns(3)

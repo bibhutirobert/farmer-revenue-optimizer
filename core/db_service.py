@@ -151,3 +151,84 @@ def delete_farm_record(owner_email: str, record_id: str) -> bool:
         return True
     except Exception:
         return False
+
+
+# ── Profiles (the "complete picture" record per signed-in user) ────────────────
+# Admin status is deliberately NOT part of this table — see supabase/schema.sql.
+# It stays solely in the [admin] emails allowlist in secrets.
+
+def upsert_profile(profile: Dict[str, Any]) -> bool:
+    """
+    Insert a new profile row on first sign-in, or refresh it (name, picture,
+    locale, last_login_at) on every later sign-in. `profile["email"]` is
+    required and must come from the authenticated OIDC session, never from
+    user-editable input.
+    """
+    client = get_client()
+    email = (profile.get("email") or "").strip().lower()
+    if not client or not email:
+        return False
+    try:
+        payload = dict(profile)
+        payload["email"] = email
+        client.table("profiles").upsert(payload, on_conflict="email").execute()
+        return True
+    except Exception:
+        return False
+
+
+def get_profile(email: str) -> Optional[Dict[str, Any]]:
+    """Fetch one profile by email. None if not found or DB unavailable."""
+    client = get_client()
+    if not client or not email:
+        return None
+    try:
+        resp = (
+            client.table("profiles")
+            .select("*")
+            .eq("email", email.strip().lower())
+            .limit(1)
+            .execute()
+        )
+        rows = resp.data or []
+        return rows[0] if rows else None
+    except Exception:
+        return None
+
+
+def save_phone_number(email: str, phone_number: str) -> bool:
+    """
+    Attach a mobile number to a profile, unverified. Verification will be
+    wired in later via core/phone_auth_service.py (currently a stub) — this
+    only captures the number so the plumbing is ready.
+    """
+    client = get_client()
+    if not client or not email or not phone_number:
+        return False
+    try:
+        client.table("profiles").update(
+            {"phone_number": phone_number.strip(), "phone_verified": False}
+        ).eq("email", email.strip().lower()).execute()
+        return True
+    except Exception:
+        return False
+
+
+def get_all_profiles(limit: int = 2000) -> List[Dict[str, Any]]:
+    """Admin-only: list all signed-in users. Callers must gate this behind
+    core.auth_service.require_admin() — this function itself performs no
+    authorization check, same as every other server-role query in this module."""
+    client = get_client()
+    if not client:
+        return []
+    try:
+        resp = (
+            client.table("profiles")
+            .select("*")
+            .order("last_login_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return resp.data or []
+    except Exception:
+        return []
