@@ -134,7 +134,7 @@ whole security model:
 | Layer | How it's protected |
 |---|---|
 | **Secrets** | Never hardcoded. Read from `.streamlit/secrets.toml` (git-ignored) or the platform's secrets manager. `.streamlit/secrets.toml.example` ships only placeholder values. |
-| **Auth** | Google Sign-In via Streamlit's native OIDC (`core/auth_service.py`) is **mandatory** — every farmer must have an account before using Land Selection, Farm Details, Recommendations, or My Reports (`require_login()`). The internal Dashboard needs sign-in **plus** an email on the `[admin] emails` allowlist (`require_admin()`), and admin status lives only in that secrets file, never in the database, so it can't be escalated by editing a row. Every gate fails closed — unconfigured or logged-out always means "denied", never "allowed" or silent guest access. A second sign-in path, mobile number + OTP, is planned for farmers without Google accounts; the data field and UI capture already exist, the OTP provider itself is a documented stub (`core/phone_auth_service.py`). |
+| **Auth** | Google Sign-In via Streamlit's native OIDC (`core/auth_service.py`) is **mandatory** — every farmer must have an account before using Land Selection, Farm Details, Recommendations, or My Reports (`require_login()`). The internal Dashboard needs sign-in **plus** an email on the `[admin] emails` allowlist (`require_admin()`), and admin status lives only in that secrets file, never in the database, so it can't be escalated by editing a row. Every gate fails closed — unconfigured or logged-out always means "denied", never "allowed" or silent guest access. Mobile-number verification is a full OTP implementation (`core/phone_auth_service.py`) — see "Mobile OTP" below. |
 | **Database** | Supabase Postgres (`core/db_service.py`), connected with the **service role** key (server-side only, never sent to the browser). Row Level Security is enabled on every table with no policies granted to `anon`/`authenticated` — even a leaked public key returns zero rows. Per-user access (a farmer only sees their own saved reports) is enforced in application code, scoped by the authenticated `owner_email`. See `supabase/schema.sql` for the full rationale. |
 | **Storage** | Supabase Storage bucket for saved PDF reports (`core/storage_service.py`) is private, objects are namespaced by a one-way hash of the owner's email (never the raw address), and access is only ever via short-lived (1 hour) signed URLs minted server-side for the authenticated owner. |
 | **Transport** | Streamlit Cloud / any standard host serves the app over HTTPS by default. |
@@ -164,11 +164,43 @@ implicitly through their own saved reports.
    and a random `cookie_secret`.
 3. Add your own email under `[admin] emails` to unlock the Dashboard.
 
+### Mobile OTP
+
+`core/phone_auth_service.py` is a complete one-time-code implementation, not
+a placeholder. It generates codes with `secrets`, stores only an
+HMAC-SHA256 digest bound to the phone number (a database dump yields no
+usable codes), expires them after 5 minutes, caps verification attempts at 5
+(a 6-digit code is only 10⁶ combinations — without a cap it is brute-forceable),
+rate-limits sends to 3 per 15 minutes per number, and burns each challenge on
+use so a code can't be replayed. Comparison is constant-time.
+
+Configure a provider under `[sms]`:
+
+| `provider` | What it does |
+|---|---|
+| `dev` | **Sends no SMS** — shows the code on screen so you can exercise the whole flow with no paid account. Never ship this to production: it would let anyone "verify" any number they type. |
+| `msg91` | India-first. Needs a DLT/TRAI-registered sender id + template id (that registration is a real regulatory step and takes a few days). |
+| `twilio` | Needs `account_sid`, `auth_token`, `from_number`. |
+
+Omit `[sms]` entirely and verification stays off — the app then just captures
+numbers unverified, and says so in the UI.
+
+**Phone as a *login* method** (rather than verification on an existing
+account) is deliberately not done with this module. It needs a durable
+session for someone who never touches Google, and Streamlit's `st.login()`
+is OIDC-only with no cookie-writing API — hand-rolling that is where phone
+auth usually goes wrong. The clean route is to add a second OIDC provider
+that does SMS auth (Supabase Auth, Firebase, or an Auth0 phone connection)
+to `[auth]` and call `st.login("<provider>")`. Because every page gates on
+`auth_service.require_login()` rather than on Google specifically, that's a
+config change plus one button — not a rewrite.
+
 ### Database & storage setup (Supabase)
 
 1. Create a free project at [supabase.com](https://supabase.com).
 2. Open the SQL editor and run `supabase/schema.sql` — creates
-   `usage_events`, `farm_records`, `profiles`, and enables RLS on all three.
+   `usage_events`, `farm_records`, `profiles`, `otp_challenges`, and enables
+   RLS on all four.
 3. Under Storage, create a bucket named `farm-reports` and leave **Public**
    turned **off**.
 4. Add the `[supabase]` block to secrets with your project `url` and the

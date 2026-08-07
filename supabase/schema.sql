@@ -110,6 +110,35 @@ create table if not exists profiles (
 alter table profiles enable row level security;
 -- No policies granted -> anon/authenticated get zero rows. Service role only.
 
+-- ── otp_challenges ───────────────────────────────────────────────────────────
+-- One row per issued mobile verification code (core/phone_auth_service.py).
+-- NOTE: code_hash is an HMAC-SHA256 digest keyed by a server-side secret and
+-- bound to the phone number — the code itself is NEVER stored, so a dump of
+-- this table yields no usable codes. Rows carry an attempt counter (brute
+-- force cap) and a consumed flag (replay protection).
+
+create table if not exists otp_challenges (
+    id          bigint generated always as identity primary key,
+    created_at  timestamptz not null default now(),
+    phone       text not null,              -- E.164, e.g. +919876543210
+    code_hash   text not null,              -- HMAC-SHA256(phone:code), never the code
+    expires_at  timestamptz not null,
+    attempts    integer not null default 0,
+    consumed    boolean not null default false
+);
+
+create index if not exists otp_challenges_phone_idx
+    on otp_challenges (phone, consumed, created_at desc);
+create index if not exists otp_challenges_created_idx
+    on otp_challenges (created_at desc);
+
+alter table otp_challenges enable row level security;
+-- No policies granted -> anon/authenticated get zero rows. Service role only.
+
+-- Optional housekeeping: drop challenges older than a day. Schedule with
+-- pg_cron if available, or run manually now and then.
+--   delete from otp_challenges where created_at < now() - interval '1 day';
+
 -- ── Storage bucket for saved PDF reports ────────────────────────────────────
 -- Create via the Supabase dashboard (Storage -> New bucket) or the snippet
 -- below. MUST be private (public = false). Objects are named

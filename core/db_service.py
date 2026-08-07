@@ -214,6 +214,128 @@ def save_phone_number(email: str, phone_number: str) -> bool:
         return False
 
 
+def mark_phone_verified(email: str, phone_number: str) -> bool:
+    """Attach a phone number to a profile and flag it verified. Call ONLY
+    after core.phone_auth_service.verify_otp() has returned verified=True —
+    this function trusts its caller and performs no verification itself."""
+    client = get_client()
+    if not client or not email or not phone_number:
+        return False
+    try:
+        client.table("profiles").update(
+            {"phone_number": phone_number.strip(), "phone_verified": True}
+        ).eq("email", email.strip().lower()).execute()
+        return True
+    except Exception:
+        return False
+
+
+# ── OTP challenges (see core/phone_auth_service.py) ───────────────────────────
+# Rows hold only an HMAC digest of the code, never the code itself.
+
+def create_otp_challenge(phone: str, code_hash: str, expires_at: str) -> bool:
+    """Persist a new OTP challenge. Any earlier live challenge for the same
+    number is consumed first, so only the newest code is ever valid."""
+    client = get_client()
+    if not client or not phone or not code_hash:
+        return False
+    try:
+        client.table("otp_challenges").update({"consumed": True}).eq(
+            "phone", phone
+        ).eq("consumed", False).execute()
+        client.table("otp_challenges").insert({
+            "phone": phone,
+            "code_hash": code_hash,
+            "expires_at": expires_at,
+            "attempts": 0,
+            "consumed": False,
+        }).execute()
+        return True
+    except Exception:
+        return False
+
+
+def get_active_otp_challenge(phone: str) -> Optional[Dict[str, Any]]:
+    """Newest unconsumed challenge for this number, or None."""
+    client = get_client()
+    if not client or not phone:
+        return None
+    try:
+        resp = (
+            client.table("otp_challenges")
+            .select("*")
+            .eq("phone", phone)
+            .eq("consumed", False)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        rows = resp.data or []
+        return rows[0] if rows else None
+    except Exception:
+        return None
+
+
+def bump_otp_attempts(challenge_id: Any) -> bool:
+    """Increment the failed-attempt counter on a challenge."""
+    client = get_client()
+    if not client or challenge_id is None:
+        return False
+    try:
+        resp = (
+            client.table("otp_challenges")
+            .select("attempts")
+            .eq("id", challenge_id)
+            .limit(1)
+            .execute()
+        )
+        rows = resp.data or []
+        current = int(rows[0].get("attempts", 0) or 0) if rows else 0
+        client.table("otp_challenges").update(
+            {"attempts": current + 1}
+        ).eq("id", challenge_id).execute()
+        return True
+    except Exception:
+        return False
+
+
+def consume_otp_challenge(challenge_id: Any) -> bool:
+    """Mark a challenge used so it can never be replayed."""
+    client = get_client()
+    if not client or challenge_id is None:
+        return False
+    try:
+        client.table("otp_challenges").update(
+            {"consumed": True}
+        ).eq("id", challenge_id).execute()
+        return True
+    except Exception:
+        return False
+
+
+def count_recent_otp_sends(phone: str, since_iso_or_dt: Any) -> int:
+    """How many codes were sent to this number since the given time — powers
+    the send rate limit. Returns MAX_INT-ish on failure so a broken query
+    fails CLOSED (blocks sending) rather than opening the rate limit."""
+    client = get_client()
+    if not client or not phone:
+        return 0
+    since = since_iso_or_dt
+    if hasattr(since, "isoformat"):
+        since = since.isoformat()
+    try:
+        resp = (
+            client.table("otp_challenges")
+            .select("id")
+            .eq("phone", phone)
+            .gte("created_at", since)
+            .execute()
+        )
+        return len(resp.data or [])
+    except Exception:
+        return 9999
+
+
 def get_all_profiles(limit: int = 2000) -> List[Dict[str, Any]]:
     """Admin-only: list all signed-in users. Callers must gate this behind
     core.auth_service.require_admin() — this function itself performs no

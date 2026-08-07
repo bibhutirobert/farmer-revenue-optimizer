@@ -15,8 +15,11 @@ from utils.map_utils import (
 )
 from core.scene_provider import default_scene_provider
 from core.auth_service import require_login, current_user_email, render_account_widget
-from core.db_service import get_profile, save_phone_number
-from core.phone_auth_service import is_otp_available
+from core.db_service import get_profile, save_phone_number, mark_phone_verified
+from core.phone_auth_service import (
+    is_otp_available, send_otp, verify_otp, normalize_phone,
+    OTP_LENGTH, OTP_TTL_SECONDS,
+)
 
 st.set_page_config(page_title="Land Selection | FRO", page_icon="🗺️", layout="wide")
 
@@ -67,36 +70,129 @@ with st.expander("ℹ️ How to use the map" if lang == "en" else "ℹ️ मा
         5. Once green ✅ appears, click **Next**
         """)
 
-# ── Mobile number (optional today, groundwork for OTP sign-in later) ──────────
+# ── Mobile number + OTP verification ──────────────────────────────────────────
 _owner_email = current_user_email()
 _profile = get_profile(_owner_email) if _owner_email else None
-if _owner_email and not (_profile and _profile.get("phone_number")):
+_phone_done = bool(_profile and _profile.get("phone_verified"))
+
+if _owner_email and not _phone_done:
     with st.expander(
-        "📱 Add your mobile number (optional)" if lang == "en"
-        else "📱 अपना मोबाइल नंबर जोड़ें (वैकल्पिक)",
+        "📱 Verify your mobile number" if lang == "en"
+        else "📱 अपना मोबाइल नंबर सत्यापित करें",
         expanded=False,
     ):
-        st.caption(
-            "For future SMS updates. OTP verification is coming soon — for now "
-            "this just saves the number to your account." if lang == "en"
-            else "भविष्य के SMS अपडेट के लिए। OTP सत्यापन जल्द आ रहा है — फिलहाल "
-                 "यह केवल नंबर आपके खाते में सहेजता है।"
-        )
-        phone_input = st.text_input(
-            "Mobile number" if lang == "en" else "मोबाइल नंबर",
-            placeholder="+91XXXXXXXXXX", key="phone_input",
-        )
         if not is_otp_available():
-            st.caption("ℹ️ OTP verification: coming soon." if lang == "en" else "ℹ️ OTP सत्यापन: जल्द आ रहा है।")
-        if st.button("Save number" if lang == "en" else "नंबर सहेजें", key="save_phone_btn"):
-            if phone_input.strip():
-                if save_phone_number(_owner_email, phone_input.strip()):
+            # No SMS provider configured — capture the number unverified so
+            # nothing is lost, and say plainly that verification is off.
+            st.caption(
+                "SMS verification isn't switched on for this deployment yet. "
+                "You can still save your number for future updates."
+                if lang == "en"
+                else "इस डिप्लॉयमेंट के लिए SMS सत्यापन अभी चालू नहीं है। "
+                     "आप भविष्य के अपडेट के लिए अपना नंबर सहेज सकते हैं।"
+            )
+            phone_input = st.text_input(
+                "Mobile number" if lang == "en" else "मोबाइल नंबर",
+                placeholder="+91XXXXXXXXXX", key="phone_input",
+            )
+            if st.button("Save number" if lang == "en" else "नंबर सहेजें", key="save_phone_btn"):
+                normalized = normalize_phone(phone_input)
+                if not normalized:
+                    st.error(
+                        "That doesn't look like a valid Indian mobile number."
+                        if lang == "en" else "यह एक वैध भारतीय मोबाइल नंबर नहीं लगता।"
+                    )
+                elif save_phone_number(_owner_email, normalized):
                     st.success("Saved." if lang == "en" else "सहेजा गया।")
                 else:
                     st.warning(
                         "Could not save — database not configured or unreachable."
                         if lang == "en" else "सहेज नहीं सका — डेटाबेस अनुपलब्ध।"
                     )
+        else:
+            # Step 1 — send the code
+            phone_input = st.text_input(
+                "Mobile number" if lang == "en" else "मोबाइल नंबर",
+                placeholder="+91XXXXXXXXXX", key="phone_input",
+            )
+            if st.button("Send code" if lang == "en" else "कोड भेजें", key="send_otp_btn"):
+                res = send_otp(phone_input)
+                if res.get("sent"):
+                    st.session_state["_otp_phone"] = res["phone"]
+                    if res.get("dev_code"):
+                        st.warning(
+                            f"DEV MODE — no SMS sent. Your code is **{res['dev_code']}**"
+                        )
+                    else:
+                        st.success(
+                            f"Code sent to {res['phone']}. It expires in "
+                            f"{OTP_TTL_SECONDS // 60} minutes."
+                            if lang == "en"
+                            else f"{res['phone']} पर कोड भेजा गया। यह "
+                                 f"{OTP_TTL_SECONDS // 60} मिनट में समाप्त हो जाएगा।"
+                        )
+                else:
+                    reason = res.get("reason", "")
+                    msgs_en = {
+                        "invalid_phone":  "That doesn't look like a valid Indian mobile number.",
+                        "rate_limited":   "Too many codes requested. Please try again in 15 minutes.",
+                        "delivery_failed": "Could not send the SMS just now. Please try again.",
+                        "storage_failed": "Could not start verification — database unreachable.",
+                        "not_configured": "SMS verification isn't available on this deployment.",
+                    }
+                    msgs_hi = {
+                        "invalid_phone":  "यह एक वैध भारतीय मोबाइल नंबर नहीं लगता।",
+                        "rate_limited":   "बहुत अधिक कोड मांगे गए। कृपया 15 मिनट बाद प्रयास करें।",
+                        "delivery_failed": "अभी SMS नहीं भेजा जा सका। कृपया पुनः प्रयास करें।",
+                        "storage_failed": "सत्यापन शुरू नहीं हो सका — डेटाबेस अनुपलब्ध।",
+                        "not_configured": "इस डिप्लॉयमेंट पर SMS सत्यापन उपलब्ध नहीं है।",
+                    }
+                    table = msgs_en if lang == "en" else msgs_hi
+                    st.error(table.get(reason, reason))
+
+            # Step 2 — verify the code
+            if st.session_state.get("_otp_phone"):
+                st.caption(
+                    f"Enter the {OTP_LENGTH}-digit code sent to {st.session_state['_otp_phone']}"
+                    if lang == "en"
+                    else f"{st.session_state['_otp_phone']} पर भेजा गया {OTP_LENGTH}-अंकीय कोड दर्ज करें"
+                )
+                code_input = st.text_input(
+                    "Verification code" if lang == "en" else "सत्यापन कोड",
+                    max_chars=OTP_LENGTH, key="otp_code_input",
+                )
+                if st.button("Verify" if lang == "en" else "सत्यापित करें", key="verify_otp_btn"):
+                    vres = verify_otp(st.session_state["_otp_phone"], code_input)
+                    if vres.get("verified"):
+                        mark_phone_verified(_owner_email, vres["phone"])
+                        st.session_state.pop("_otp_phone", None)
+                        st.success("✅ Mobile number verified." if lang == "en"
+                                   else "✅ मोबाइल नंबर सत्यापित।")
+                        st.rerun()
+                    else:
+                        reason = vres.get("reason", "")
+                        left = vres.get("attempts_left")
+                        vmsgs_en = {
+                            "incorrect": f"Incorrect code. {left} attempt(s) left."
+                                         if left is not None else "Incorrect code.",
+                            "expired":   "That code has expired. Request a new one.",
+                            "no_challenge": "No active code. Request a new one.",
+                            "too_many_attempts": "Too many wrong attempts. Request a new code.",
+                        }
+                        vmsgs_hi = {
+                            "incorrect": f"गलत कोड। {left} प्रयास शेष।"
+                                         if left is not None else "गलत कोड।",
+                            "expired":   "कोड समाप्त हो गया। नया कोड मांगें।",
+                            "no_challenge": "कोई सक्रिय कोड नहीं। नया कोड मांगें।",
+                            "too_many_attempts": "बहुत अधिक गलत प्रयास। नया कोड मांगें।",
+                        }
+                        table = vmsgs_en if lang == "en" else vmsgs_hi
+                        st.error(table.get(reason, reason))
+elif _phone_done:
+    st.caption(
+        f"📱 Mobile verified: {_profile.get('phone_number')}" if lang == "en"
+        else f"📱 मोबाइल सत्यापित: {_profile.get('phone_number')}"
+    )
 
 # ── Search box ─────────────────────────────────────────────────────────────────
 st.markdown("---")
