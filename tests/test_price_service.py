@@ -25,8 +25,9 @@ def test_resolve_price_source_is_valid():
     assert result["source"] in ("live", "cache", "default")
 
 
-def test_live_api_stub_returns_none():
-    """Tier 1 must return None until a real API is connected."""
+def test_live_api_returns_none_without_key():
+    """Tier 1 is wired to data.gov.in but must stay dormant without an API
+    key, so the resolver falls through to cache/defaults."""
     assert _fetch_from_live_api("wheat") is None
     assert _fetch_from_live_api("rice", "Punjab") is None
 

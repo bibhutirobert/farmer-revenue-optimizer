@@ -112,3 +112,35 @@ def test_boundary_edges():
     assert validate_india_bounds(38.0, 98.0) is True
     assert validate_india_bounds(5.9,  78.0) is False
     assert validate_india_bounds(20.0, 67.9) is False
+
+
+# ── Mobile-friendliness of the selection map ──────────────────────────────────
+# These guard the touch-first choices: a farmer standing in their field should
+# reach a correct pin in one tap, without fighting a cluttered toolbar.
+
+def _selection_map_html():
+    from utils.map_utils import make_selection_map
+    return make_selection_map(center=[19.07, 72.87], zoom=15).get_root().render()
+
+
+def test_map_offers_locate_me_control():
+    """The one-tap 'where am I' path — the biggest phone friction saver."""
+    assert "L.control.locate(" in _selection_map_html()
+
+
+def test_draw_toolbar_omits_redundant_marker_tool():
+    """Tapping the map already drops a pin; a marker tool as well just gives
+    two ways to do one thing on a small screen."""
+    assert '"marker": false' in _selection_map_html()
+
+
+def test_field_boundary_tools_still_available():
+    html = _selection_map_html()
+    assert '"polygon": true' in html
+    assert '"rectangle": true' in html
+
+
+def test_layer_control_starts_collapsed():
+    """Expanded, it covers a real slice of a phone screen right where thumbs
+    land when panning."""
+    assert '"collapsed": true' in _selection_map_html()

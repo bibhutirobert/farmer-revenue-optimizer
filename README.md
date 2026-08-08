@@ -55,6 +55,7 @@ farmer-revenue-optimizer-cloud/
 ├── utils/
 │   ├── map_utils.py
 │   ├── pdf_utils.py
+│   ├── ui_utils.py                # Mobile CSS + how-to-use walkthrough
 │   └── weather_utils.py           # Open-Meteo forecast + farmer guidance
 ├── data/
 │   ├── crops.json                  # 15 major Indian crops, MSP/FRP 2023-24
@@ -196,6 +197,53 @@ to `[auth]` and call `st.login("<provider>")`. Because every page gates on
 `auth_service.require_login()` rather than on Google specifically, that's a
 config change plus one button — not a rewrite.
 
+### Live mandi prices
+
+`core/mandi_service.py` is Tier 1 of the price resolver: real daily mandi
+prices from the Government of India open-data feed that republishes Agmarknet.
+It needs a **free** API key — register at [data.gov.in](https://data.gov.in),
+then add `[data_gov] api_key` to secrets. Without a key nothing changes; the
+resolver falls through to the cache file and then to hardcoded MSP.
+
+It queries the farmer's own state first and falls back to a national figure
+when the state feed is thin, takes the **median** modal price rather than the
+mean (mandi data carries occasional wild outliers that shouldn't move a
+revenue projection), rejects records outside a sane price band, and requires
+at least three records before reporting a figure. Results are cached 6 hours.
+
+One thing to expect: mandi prices sit **below** MSP for many crops in glut
+season, so projections may come out lower than they did on hardcoded MSP.
+That's the real signal, and the advisory is more honest with it.
+
+### How-to-use walkthrough
+
+The home page carries a "How to use this app" section — written steps in both
+languages, open by default for signed-out visitors. To add a video clip, set
+`[help] video_url` to a YouTube or `.mp4` link, or commit the file to
+`assets/how_to_use.mp4`. The written steps always stay visible underneath, so
+a farmer on a metered connection who never plays the video still gets the
+whole explanation.
+
+### Mobile use
+
+Most farmers will open this on a phone, so the land-selection flow is built
+touch-first:
+
+- **⌖ "Show me where I am"** on the map uses browser geolocation — a farmer
+  standing in their field gets a correct pin in one tap, no searching. This is
+  the primary path; search is the fallback.
+- Search submits from the phone keyboard rather than needing a separate tap on
+  a cramped button.
+- Leaflet's default ~26 px controls are enlarged to 44 px, the minimum
+  comfortable tap target (WCAG 2.5.5 / Apple HIG); primary buttons are 48 px.
+- The redundant marker-drawing tool is gone — tapping the map already drops a
+  pin. Polygon and rectangle remain for tracing a real boundary, which is
+  optional.
+- The layer control starts collapsed and the map is shorter, so the Confirm
+  button isn't pushed below the fold on a phone.
+- The sidebar starts `auto` rather than `expanded`; forced open, it covered the
+  entire screen on arrival.
+
 ### Database & storage setup (Supabase)
 
 1. Create a free project at [supabase.com](https://supabase.com).
@@ -257,7 +305,9 @@ def render(self, container, lat: float, lng: float, bbox: Optional[dict] = None)
 | 3D terrain view | **Done** | `core/scene_provider.py` — `TerrainSceneProvider` |
 | Hindi PDF | **Done** | `core/report_generator.py` — Noto Sans Devanagari registered |
 | Weather integration | **Done** | `utils/weather_utils.py` → Recommendations page |
-| Real-time mandi prices | Ready for key | `core/price_service.py` — fill `_fetch_from_live_api()` (data.gov.in / Agmarknet) |
+| Real-time mandi prices | **Done** | `core/mandi_service.py` — Tier 1 of the price resolver |
+| How-to-use walkthrough | **Done** | `utils/ui_utils.py` — written steps, optional video |
+| Mobile-first land selection | **Done** | `utils/map_utils.py` — locate control + touch targets |
 | Claude API narrative | Ready for key | `core/llm_service.py` — currently OpenAI; swap or add an Anthropic client |
 | ML yield prediction | Blocked | Needs historical yield data that does not exist yet |
 
@@ -271,6 +321,7 @@ def render(self, container, lat: float, lng: float, bbox: Optional[dict] = None)
 - Satellite imagery: Esri World Imagery (free CDN, no API key required)
 - Terrain elevation: AWS Terrain Tiles / Terrarium (free CDN, no API key required)
 - Weather forecast: Open-Meteo (free for non-commercial use, no API key required)
+- Mandi prices: data.gov.in / Agmarknet daily market feed (free API key required)
 
 ---
 

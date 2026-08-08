@@ -8,6 +8,7 @@ from core.models import FarmInput
 from core.crop_data import list_crop_keys, get_crop_display_name
 from core.soil_service import get_ranked_crops
 from core.auth_service import require_login, render_account_widget
+from utils.ui_utils import inject_mobile_css
 
 st.set_page_config(page_title="Farm Details | FRO", page_icon="📋", layout="wide")
 
@@ -15,6 +16,7 @@ if "lang" not in st.session_state:
     st.session_state["lang"] = "en"
 
 require_login(st.session_state["lang"])
+inject_mobile_css()
 render_account_widget(st.session_state["lang"])
 
 col_title, col_lang = st.columns([8, 2])

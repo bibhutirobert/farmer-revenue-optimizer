@@ -1,16 +1,21 @@
 import streamlit as st
 from core.auth_service import render_account_widget, is_logged_in, current_user_name
+from utils.ui_utils import inject_mobile_css, render_how_to_use
 
 st.set_page_config(
     page_title="Farmer Revenue Optimizer",
     page_icon="🌾",
     layout="wide",
-    initial_sidebar_state="expanded",
+    # "auto" collapses the sidebar on narrow screens and expands it on
+    # desktop. Forcing "expanded" made the nav cover the entire phone screen
+    # on arrival, hiding the page behind a panel most farmers won't need.
+    initial_sidebar_state="auto",
 )
 
 if "lang" not in st.session_state:
     st.session_state["lang"] = "en"
 
+inject_mobile_css()
 render_account_widget(st.session_state["lang"])
 
 
@@ -88,6 +93,10 @@ else:
         st.info("🔑 Sign in to get started — an account is required to use this app.")
         if st.button("🔑 Sign in with Google", type="primary", use_container_width=True):
             st.login("google")
+
+# Open by default for someone who hasn't signed in yet — they're the ones
+# most likely to be seeing this for the first time.
+render_how_to_use(lang, expanded=not is_logged_in())
 
 st.divider()
 col1, col2, col3 = st.columns(3)

@@ -15,6 +15,7 @@ from core.db_service import save_farm_record
 from core.storage_service import upload_report_pdf
 from utils.pdf_utils import build_pdf_bytes
 from utils.weather_utils import fetch_forecast, weather_tips
+from utils.ui_utils import inject_mobile_css
 
 st.set_page_config(page_title="Recommendations | FRO", page_icon="📊", layout="wide")
 
@@ -22,6 +23,7 @@ if "lang" not in st.session_state:
     st.session_state["lang"] = "en"
 
 require_login(st.session_state["lang"])
+inject_mobile_css()
 render_account_widget(st.session_state["lang"])
 
 col_title, col_lang = st.columns([8, 2])

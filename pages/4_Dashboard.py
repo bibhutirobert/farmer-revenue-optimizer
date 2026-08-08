@@ -19,11 +19,13 @@ from core.data_service import get_portfolio_data, compute_risk_segments
 from core.crop_data import get_crop_display_name
 from core.auth_service import require_admin, current_user_email, render_account_widget
 from core.db_service import get_all_profiles, is_db_configured
+from utils.ui_utils import inject_mobile_css
 
 st.set_page_config(page_title="Risk Intelligence Panel | FRO", page_icon="📈", layout="wide")
 
 # ── Access control — admin allowlist only, never fails open ───────────────────
 require_admin()
+inject_mobile_css()
 
 st.sidebar.warning("⚠️ Internal view. Not for farmer distribution.")
 st.sidebar.caption(f"Signed in as {current_user_email()}")

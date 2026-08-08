@@ -11,6 +11,7 @@ from core.auth_service import require_login, current_user_email, render_account_
 from core.db_service import get_farm_history, delete_farm_record, is_db_configured
 from core.storage_service import get_signed_url
 from core.crop_data import get_crop_display_name
+from utils.ui_utils import inject_mobile_css
 
 st.set_page_config(page_title="My Reports | FRO", page_icon="📂", layout="wide")
 
@@ -19,6 +20,7 @@ if "lang" not in st.session_state:
 lang = st.session_state["lang"]
 
 require_login(lang)
+inject_mobile_css()
 render_account_widget(lang)
 
 st.title("📂 My Reports" if lang == "en" else "📂 मेरी रिपोर्ट्स")

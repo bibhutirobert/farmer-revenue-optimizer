@@ -20,6 +20,7 @@ from core.phone_auth_service import (
     is_otp_available, send_otp, verify_otp, normalize_phone,
     OTP_LENGTH, OTP_TTL_SECONDS,
 )
+from utils.ui_utils import inject_mobile_css, render_how_to_use
 
 st.set_page_config(page_title="Land Selection | FRO", page_icon="🗺️", layout="wide")
 
@@ -28,6 +29,7 @@ if "lang" not in st.session_state:
 
 # ── Sign-in required for the whole farmer flow ─────────────────────────────────
 require_login(st.session_state["lang"])
+inject_mobile_css()
 render_account_widget(st.session_state["lang"])
 
 col_title, col_lang = st.columns([8, 2])
@@ -55,19 +57,31 @@ with col_title:
 with st.expander("ℹ️ How to use the map" if lang == "en" else "ℹ️ मानचित्र का उपयोग कैसे करें", expanded=False):
     if lang == "hi":
         st.markdown("""
-        1. **खोज बॉक्स** में पिनकोड, गाँव या जिला टाइप करें → **खोजें** पर क्लिक करें
+        **सबसे आसान तरीका:** अगर आप अभी अपने खेत में हैं, तो नक्शे पर **⌖** बटन दबाएँ —
+        नक्शा सीधे आपके स्थान पर पहुँच जाएगा। फिर पुष्टि करें। बस।
+
+        **या:**
+        1. **खोज बॉक्स** में पिनकोड, गाँव या जिला टाइप करें → **खोजें** दबाएँ
         2. परिणाम चुनें — मानचित्र वहाँ जाएगा
-        3. अपने खेत पर **क्लिक करें** — नारंगी मार्कर दिखेगा
+        3. अपने खेत पर **टैप करें** — नारंगी मार्कर दिखेगा
         4. **"इस स्थान की पुष्टि करें"** दबाएं — राज्य, मिट्टी और जलवायु स्वतः भर जाएगी
         5. हरा ✅ दिखने पर अगले चरण पर जाएं
+
+        *(खेत की सीमा बनाना ज़रूरी नहीं — केवल एक टैप ही काफी है।)*
         """)
     else:
         st.markdown("""
-        1. Type **pincode, village or district** in search → click **Search**
+        **Fastest way:** if you're standing in your field right now, tap the **⌖**
+        button on the map — it jumps straight to your location. Then confirm. Done.
+
+        **Otherwise:**
+        1. Type **pincode, village or district** in search → press **Search**
         2. Pick the correct result — map flies there
-        3. **Click on your field** — orange marker appears
-        4. Click **"Confirm this location"** — state, soil type, and climate auto-detected
-        5. Once green ✅ appears, click **Next**
+        3. **Tap your field** — orange marker appears
+        4. Tap **"Confirm this location"** — state, soil type, and climate auto-detected
+        5. Once green ✅ appears, tap **Next**
+
+        *(Drawing the field boundary is optional — a single tap is enough.)*
         """)
 
 # ── Mobile number + OTP verification ──────────────────────────────────────────
@@ -196,8 +210,16 @@ elif _phone_done:
 
 # ── Search box ─────────────────────────────────────────────────────────────────
 st.markdown("---")
-search_col, btn_col = st.columns([5, 1])
-with search_col:
+st.caption(
+    "💡 Standing in your field? Tap the ⌖ button on the map to jump straight there — "
+    "no searching needed."
+    if lang == "en"
+    else "💡 खेत में खड़े हैं? नक्शे पर ⌖ बटन दबाएँ — सीधे वहीं पहुँच जाएँगे, खोजने की ज़रूरत नहीं।"
+)
+
+# A form so the phone keyboard's "Go" key submits — on a small screen a
+# separate Search button next to the input is a cramped second tap.
+with st.form("field_search", clear_on_submit=False):
     search_query = st.text_input(
         "🔍 Search (pincode / village / district)" if lang == "en"
         else "🔍 खोजें (पिनकोड / गाँव / जिला)",
@@ -205,10 +227,9 @@ with search_col:
                     else "जैसे: 416416, सांगली, नासिक...",
         key="search_query_input",
     )
-with btn_col:
-    st.markdown("<br>", unsafe_allow_html=True)
-    do_search = st.button("Search" if lang == "en" else "खोजें",
-                          use_container_width=True)
+    do_search = st.form_submit_button(
+        "Search" if lang == "en" else "खोजें", use_container_width=True
+    )
 
 if do_search and search_query:
     with st.spinner("Searching..." if lang == "en" else "खोजा जा रहा है..."):
@@ -253,7 +274,9 @@ folium_map = make_selection_map(
 
 try:
     map_result = st_folium(
-        folium_map, use_container_width=True, height=540,
+        # Shorter than it was: on a phone a 540 px map pushed the Confirm
+        # button entirely below the fold, so every selection cost a scroll.
+        folium_map, use_container_width=True, height=460,
         returned_objects=["last_clicked", "all_drawings"],
         key=f"folium_map_{str(map_center)}_{map_zoom}",
     )
@@ -303,39 +326,40 @@ if pending_lat and pending_lng and (pending_lat != confirmed_lat or pending_lng 
     else:
         st.info(f"📍 **New location selected** — {pending_lat:.5f}, {pending_lng:.5f} — Confirm below.")
 
-    confirm_cols = st.columns([3, 2, 3])
-    with confirm_cols[1]:
-        if st.button("✅ Confirm this location" if lang == "en" else "✅ इस स्थान की पुष्टि करें",
-                     type="primary", use_container_width=True):
+    # Full width rather than boxed into a middle column — this is the one
+    # action the whole page exists for, and it needs to be an easy thumb target.
+    if st.button("✅ Confirm this location" if lang == "en" else "✅ इस स्थान की पुष्टि करें",
+                 type="primary", use_container_width=True):
 
-            # Write confirmed location
-            st.session_state["lat"]     = pending_lat
-            st.session_state["lng"]     = pending_lng
-            st.session_state["polygon"] = st.session_state.get("_pending_polygon")
+        # Write confirmed location
+        st.session_state["lat"]     = pending_lat
+        st.session_state["lng"]     = pending_lng
+        st.session_state["polygon"] = st.session_state.get("_pending_polygon")
 
-            # Auto-detect state via reverse geocode
-            with st.spinner("Detecting state, soil & climate..." if lang == "en"
-                            else "राज्य, मिट्टी और जलवायु पहचान रही है..."):
-                detected_state = reverse_geocode_state(pending_lat, pending_lng)
-                if detected_state:
-                    st.session_state["detected_state"] = detected_state
-                    # Resolve soil + climate from state
-                    from core.soil_service import resolve_soil_climate
-                    sc = resolve_soil_climate(detected_state, pending_lat, pending_lng)
-                    st.session_state["detected_soil_code"] = sc.get("soil_code", "")
-                    st.session_state["detected_soil_name"] = sc.get("soil_name_en", "")
-                    st.session_state["detected_climate"]   = sc.get("climate_zone", "")
-                    st.session_state["detected_sc_data"]   = sc  # full dict for Page 2
+        # Auto-detect state via reverse geocode
+        with st.spinner("Detecting state, soil & climate..." if lang == "en"
+                        else "राज्य, मिट्टी और जलवायु पहचान रही है..."):
+            detected_state = reverse_geocode_state(pending_lat, pending_lng)
+            if detected_state:
+                st.session_state["detected_state"] = detected_state
+                # Resolve soil + climate from state
+                from core.soil_service import resolve_soil_climate
+                sc = resolve_soil_climate(detected_state, pending_lat, pending_lng)
+                st.session_state["detected_soil_code"] = sc.get("soil_code", "")
+                st.session_state["detected_soil_name"] = sc.get("soil_name_en", "")
+                st.session_state["detected_climate"]   = sc.get("climate_zone", "")
+                st.session_state["detected_sc_data"]   = sc  # full dict for Page 2
 
-            st.session_state["pending_lat"] = None
-            st.session_state["pending_lng"] = None
-            st.session_state["map_center"]  = [pending_lat, pending_lng]
-            st.session_state["map_zoom"]    = 15
-            st.rerun()
+        st.session_state["pending_lat"] = None
+        st.session_state["pending_lng"] = None
+        st.session_state["map_center"]  = [pending_lat, pending_lng]
+        st.session_state["map_zoom"]    = 15
+        st.rerun()
 
 elif not confirmed_lat and not pending_lat:
-    st.warning("👆 Search or click the map to select your field." if lang == "en"
-               else "👆 खोजें या मानचित्र पर क्लिक करें।")
+    st.warning("👆 Tap ⌖ on the map to use your location, or search, or just tap your field."
+               if lang == "en"
+               else "👆 नक्शे पर ⌖ दबाएँ, या खोजें, या सीधे अपने खेत पर टैप करें।")
 
 if confirmed_lat:
     if st.button("🗑️ Clear & pick different location" if lang == "en"

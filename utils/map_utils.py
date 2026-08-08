@@ -1,5 +1,5 @@
 import folium
-from folium.plugins import Draw
+from folium.plugins import Draw, LocateControl
 from typing import Optional, Tuple, List, Dict, Any
 import requests
 
@@ -131,8 +131,24 @@ def make_selection_map(
                      name="Place Names (overlay)", overlay=True, control=True,
                      show=True, opacity=1.0).add_to(m)
 
+    # "Locate me" — the shortest path to a correct pin for a farmer standing
+    # in their own field, and the single biggest friction saver on a phone.
+    # Browser geolocation only; nothing is sent anywhere by this control.
+    LocateControl(
+        auto_start=False,
+        flyTo=True,
+        keepCurrentZoomLevel=False,
+        showPopup=False,
+        strings={"title": "Show me where I am"},
+        locateOptions={"enableHighAccuracy": True, "maxZoom": 17},
+    ).add_to(m)
+
+    # Marker is intentionally omitted: tapping the map already drops the
+    # pending pin, so offering a marker tool as well just doubles the ways to
+    # do one thing — which reads as confusing on a small screen. Polygon and
+    # rectangle stay for tracing an actual field boundary.
     Draw(export=False,
-         draw_options={"polygon": True, "marker": True, "rectangle": True,
+         draw_options={"polygon": True, "marker": False, "rectangle": True,
                        "circle": False, "polyline": False, "circlemarker": False},
          edit_options={"edit": True, "remove": True}).add_to(m)
 
@@ -156,7 +172,9 @@ def make_selection_map(
             icon=folium.Icon(color="green", icon="leaf", prefix="fa"),
         ).add_to(m)
 
-    folium.LayerControl(collapsed=False).add_to(m)
+    # Collapsed: expanded, this covers a meaningful slice of a phone screen
+    # and sits right where thumbs land when panning.
+    folium.LayerControl(collapsed=True).add_to(m)
     return m
 
 

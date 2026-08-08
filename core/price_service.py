@@ -1,12 +1,13 @@
 """
 Price Service — Three-Tier Resolver
 ====================================
-Tier 1: Live API (stub — returns None until real endpoint is connected)
+Tier 1: Live mandi price (data.gov.in / Agmarknet — see core/mandi_service.py)
 Tier 2: Admin-editable cache file (data/price_cache.json)
 Tier 3: Hardcoded default from crops.json (always available)
 
-To activate Tier 1: fill in _fetch_from_live_api() with your API call.
-To refresh Tier 2: edit data/price_cache.json and update updated_at date.
+Tier 1 activates as soon as a free data.gov.in API key is present under
+[data_gov] in secrets; with no key the resolver behaves exactly as it did
+before. To refresh Tier 2: edit data/price_cache.json and update updated_at.
 Nothing else in the codebase needs to change.
 """
 
@@ -24,24 +25,15 @@ CACHE_MAX_AGE_DAYS = 30  # treat cache as stale if older than this
 
 def _fetch_from_live_api(crop: str, state: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """
-    STUB — connect your live price API here.
+    Live daily mandi price from data.gov.in / Agmarknet.
 
-    Expected return format:
-    {
-        "price_per_quintal": 2300,
-        "price_type": "msp",
-        "source": "live",
-        "updated_at": "2024-03-15"
-    }
-
-    Candidate APIs to connect:
-    - Agmarknet (https://agmarknet.gov.in/) — mandi prices
-    - data.gov.in commodity price API
-    - eNAM (National Agriculture Market) API
-
-    Until connected: return None so resolver falls through to Tier 2.
+    Delegates to core/mandi_service.py, which needs a free data.gov.in API
+    key under [data_gov] in secrets. Without a key this returns None and the
+    resolver falls through to Tier 2 (cache) and Tier 3 (hardcoded MSP)
+    exactly as it did before.
     """
-    return None  # Replace with actual API call when ready
+    from core.mandi_service import fetch_mandi_price
+    return fetch_mandi_price(crop, state)
 
 
 # ── Tier 2: Cache file ─────────────────────────────────────────────────────────
@@ -130,8 +122,8 @@ def resolve_price(crop: str, state: Optional[str] = None) -> Dict[str, Any]:
 def get_price_label(source: str, updated_at: str, lang: str = "en") -> str:
     """Human-readable label for displaying price provenance in reports."""
     if source == "live":
-        label_en = f"Live market price (as of {updated_at})"
-        label_hi = f"लाइव बाजार भाव ({updated_at} तक)"
+        label_en = f"Live mandi price (as of {updated_at})"
+        label_hi = f"लाइव मंडी भाव ({updated_at} तक)"
     elif source == "cache":
         label_en = f"Cached market/MSP price (updated {updated_at})"
         label_hi = f"कैश्ड बाजार/MSP भाव ({updated_at} को अपडेट)"
