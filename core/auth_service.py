@@ -25,18 +25,72 @@ message explaining that the deployment isn't set up yet. Nothing ever runs
 anonymously.
 """
 
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import streamlit as st
 
 
-def is_auth_configured() -> bool:
+def _auth_section() -> Mapping:
     try:
-        cfg = st.secrets.get("auth", {})
-        return bool(cfg.get("client_id")) and bool(cfg.get("client_secret"))
+        return st.secrets.get("auth", {}) or {}
     except Exception:
-        return False
+        return {}
+
+
+def auth_provider() -> Optional[str]:
+    """
+    Which provider name st.login() should be called with, or None if auth
+    isn't usable yet.
+
+    Streamlit accepts two shapes for [auth] and they are NOT interchangeable:
+
+      nested  — [auth] holds redirect_uri/cookie_secret and a [auth.google]
+                subsection holds the client keys. Used as st.login("google").
+      flat    — the client keys sit directly under [auth]. Streamlit treats
+                this as the "default" provider, and it only works when
+                st.login() is called with no argument.
+
+    Calling st.login("google") against a flat config raises StreamlitAuthError,
+    and a nested config has no top-level client_id, so checking only for that
+    reports "not configured" even when setup is perfect. Detecting the shape
+    here means either layout works and neither fails silently.
+
+    Nested is preferred — it is the documented multi-provider form, and it is
+    what a second sign-in path (see core/phone_auth_service.py) would slot
+    into as [auth.phone] without disturbing Google.
+    """
+    section = _auth_section()
+    if not section:
+        return None
+
+    # Streamlit requires both of these regardless of shape; without them
+    # st.login() raises rather than redirecting.
+    if not section.get("redirect_uri") or not section.get("cookie_secret"):
+        return None
+
+    google = section.get("google")
+    if isinstance(google, Mapping) and google.get("client_id") and google.get("client_secret"):
+        return "google"
+
+    if section.get("client_id") and section.get("client_secret"):
+        return "default"
+
+    return None
+
+
+def is_auth_configured() -> bool:
+    return auth_provider() is not None
+
+
+def begin_login() -> None:
+    """Start the OIDC redirect using whichever provider shape is configured."""
+    provider = auth_provider()
+    if provider == "default":
+        st.login()
+    elif provider:
+        st.login(provider)
 
 
 def is_logged_in() -> bool:
@@ -152,7 +206,7 @@ def render_account_widget(lang: str = "en") -> None:
                 "🔑 Sign in with Google" if lang == "en" else "🔑 Google से साइन इन करें",
                 key="_auth_login",
             ):
-                st.login("google")
+                begin_login()
 
 
 def require_login(lang: str = "en") -> None:
@@ -187,7 +241,7 @@ def require_login(lang: str = "en") -> None:
         )
         if st.button("🔑 Sign in with Google" if lang == "en" else "🔑 Google से साइन इन करें",
                      key="_require_login_btn"):
-            st.login("google")
+            begin_login()
         st.stop()
 
     sync_profile_once(lang)
@@ -213,7 +267,7 @@ def require_admin(lang: str = "en") -> None:
             else "🔒 यह एक आंतरिक, केवल-एडमिन पेज है। कृपया साइन इन करें।"
         )
         if st.button("Sign in with Google" if lang == "en" else "Google से साइन इन करें"):
-            st.login("google")
+            begin_login()
         st.stop()
 
     if not is_admin():

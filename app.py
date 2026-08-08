@@ -1,5 +1,5 @@
 import streamlit as st
-from core.auth_service import render_account_widget, is_logged_in, current_user_name
+from core.auth_service import render_account_widget, is_logged_in, current_user_name, begin_login
 from utils.ui_utils import inject_mobile_css, render_how_to_use
 
 st.set_page_config(
@@ -62,7 +62,7 @@ if lang == "hi":
     else:
         st.info("🔑 शुरू करने के लिए साइन इन करें — यह ऐप का उपयोग करने के लिए आवश्यक है।")
         if st.button("🔑 Google से साइन इन करें", type="primary", use_container_width=True):
-            st.login("google")
+            begin_login()
 else:
     st.title("🌾 Farmer Revenue Optimizer")
     st.subheader("Higher income, lower costs — for your farm, in your language")
@@ -92,7 +92,7 @@ else:
     else:
         st.info("🔑 Sign in to get started — an account is required to use this app.")
         if st.button("🔑 Sign in with Google", type="primary", use_container_width=True):
-            st.login("google")
+            begin_login()
 
 # Open by default for someone who hasn't signed in yet — they're the ones
 # most likely to be seeing this for the first time.

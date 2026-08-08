@@ -82,3 +82,78 @@ def test_require_admin_never_raises_and_fails_closed():
     except Exception as e:
         pytest.fail(f"require_admin raised an exception: {e}")
     assert is_admin() is False
+
+
+# ── Secrets shape detection ───────────────────────────────────────────────────
+# Streamlit's two [auth] layouts are not interchangeable: the nested form needs
+# st.login("google"), the flat form needs st.login() with no argument. Getting
+# this wrong looks like "correctly configured app stays permanently locked".
+
+from core import auth_service
+
+
+def _fake_secrets(monkeypatch, auth_block):
+    class FakeSecrets:
+        def get(self, key, default=None):
+            return auth_block if key == "auth" else default
+
+    monkeypatch.setattr(auth_service.st, "secrets", FakeSecrets())
+
+
+BASE = {"redirect_uri": "https://x.example/oauth2callback", "cookie_secret": "s3cret"}
+GOOGLE_KEYS = {
+    "client_id": "abc.apps.googleusercontent.com",
+    "client_secret": "shh",
+    "server_metadata_url": "https://accounts.google.com/.well-known/openid-configuration",
+}
+
+
+def test_nested_google_section_is_detected(monkeypatch):
+    _fake_secrets(monkeypatch, {**BASE, "google": GOOGLE_KEYS})
+    assert auth_service.auth_provider() == "google"
+    assert auth_service.is_auth_configured() is True
+
+
+def test_flat_section_is_detected_as_default_provider(monkeypatch):
+    _fake_secrets(monkeypatch, {**BASE, **GOOGLE_KEYS})
+    assert auth_service.auth_provider() == "default"
+    assert auth_service.is_auth_configured() is True
+
+
+def test_missing_redirect_uri_is_not_configured(monkeypatch):
+    _fake_secrets(monkeypatch, {"cookie_secret": "s3cret", "google": GOOGLE_KEYS})
+    assert auth_service.auth_provider() is None
+
+
+def test_missing_cookie_secret_is_not_configured(monkeypatch):
+    _fake_secrets(monkeypatch, {"redirect_uri": "https://x/cb", "google": GOOGLE_KEYS})
+    assert auth_service.auth_provider() is None
+
+
+def test_base_keys_without_any_client_keys_is_not_configured(monkeypatch):
+    _fake_secrets(monkeypatch, dict(BASE))
+    assert auth_service.auth_provider() is None
+
+
+def test_begin_login_passes_provider_name_for_nested(monkeypatch):
+    _fake_secrets(monkeypatch, {**BASE, "google": GOOGLE_KEYS})
+    calls = []
+    monkeypatch.setattr(auth_service.st, "login", lambda *a: calls.append(a))
+    auth_service.begin_login()
+    assert calls == [("google",)]
+
+
+def test_begin_login_passes_no_argument_for_flat(monkeypatch):
+    _fake_secrets(monkeypatch, {**BASE, **GOOGLE_KEYS})
+    calls = []
+    monkeypatch.setattr(auth_service.st, "login", lambda *a: calls.append(a))
+    auth_service.begin_login()
+    assert calls == [()]
+
+
+def test_begin_login_does_nothing_when_unconfigured(monkeypatch):
+    _fake_secrets(monkeypatch, {})
+    calls = []
+    monkeypatch.setattr(auth_service.st, "login", lambda *a: calls.append(a))
+    auth_service.begin_login()
+    assert calls == []
