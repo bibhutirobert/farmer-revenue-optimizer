@@ -14,6 +14,7 @@ from core.auth_service import require_login, current_user_email, render_account_
 from core.db_service import save_farm_record
 from core.storage_service import upload_report_pdf
 from utils.pdf_utils import build_pdf_bytes
+from utils.weather_utils import fetch_forecast, weather_tips
 
 st.set_page_config(page_title="Recommendations | FRO", page_icon="📊", layout="wide")
 
@@ -179,6 +180,24 @@ st.divider()
 st.subheader("📅 Seasonal Tips" if lang=="en" else "📅 मौसमी सुझाव")
 for tip in (result.seasonal_tips_hi if lang=="hi" else result.seasonal_tips_en):
     st.markdown(f"- {tip}")
+
+# ── Weather outlook ────────────────────────────────────────────────────────────
+# Live forecast for the confirmed field. Deliberately outside the recommendation
+# engine: the engine stays pure and deterministic, and an unreachable weather
+# API renders nothing here instead of degrading the advisory.
+_w_lat = st.session_state.get("lat")
+_w_lng = st.session_state.get("lng")
+if _w_lat and _w_lng:
+    _forecast = fetch_forecast(_w_lat, _w_lng)
+    _weather_tips = weather_tips(_forecast, lang=lang)
+    if _weather_tips:
+        st.divider()
+        st.subheader("🌦️ Weather Outlook" if lang=="en" else "🌦️ मौसम पूर्वानुमान")
+        for tip in _weather_tips:
+            st.markdown(f"- {tip}")
+        st.caption("Source: Open-Meteo · guidance is indicative, not a substitute for local advice."
+                   if lang=="en"
+                   else "स्रोत: Open-Meteo · यह सुझाव संकेतात्मक है, स्थानीय सलाह का विकल्प नहीं।")
 
 # ── Vertical farming ───────────────────────────────────────────────────────────
 st.divider()

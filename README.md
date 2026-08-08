@@ -51,10 +51,11 @@ farmer-revenue-optimizer-cloud/
 │   ├── auth_service.py             # Google sign-in (OIDC) + admin allowlist gate
 │   ├── db_service.py                # Supabase Postgres client (usage events, farm records)
 │   ├── storage_service.py          # Supabase Storage client (saved PDF reports)
-│   └── scene_provider.py           # Abstract 3D hook (Skyfall-GS ready)
+│   └── scene_provider.py           # 3D terrain view (deck.gl + AWS Terrain Tiles)
 ├── utils/
 │   ├── map_utils.py
-│   └── pdf_utils.py
+│   ├── pdf_utils.py
+│   └── weather_utils.py           # Open-Meteo forecast + farmer guidance
 ├── data/
 │   ├── crops.json                  # 15 major Indian crops, MSP/FRP 2023-24
 │   └── intercrop_rules.json        # 13 intercrop compatibility rules
@@ -214,42 +215,51 @@ its synthetic demo dataset.
 
 ---
 
-## Skyfall-GS 3D terrain view — how to plug it in
+## 3D terrain view
 
-The integration point is at `core/scene_provider.py`. The abstract class `BaseSceneProvider`
-defines one method:
+Live on Land Selection, under **🛰️ 3D Terrain View**. It renders a tilted,
+rotatable view of the confirmed field: elevation from
+[AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) (Terrarium
+encoding), textured with the same Esri World Imagery the 2D map uses, with the
+drawn field outlined in yellow.
+
+**No API key, no GPU, no paid tier.** Both tile sources are public CDNs and
+deck.gl does the work in the browser, so it runs as-is on free Streamlit Cloud.
+If `pydeck` is ever missing, the provider degrades to an informational notice
+rather than breaking the page.
+
+Terrain tiles are ~30 m resolution — enough to read a slope or a valley, not
+individual bunds.
+
+### On Skyfall-GS
+
+The earlier scaffold assumed Skyfall-GS was a key-based tile service. It is not:
+it is a research codebase that synthesises 3D Gaussian splats from satellite
+imagery, needing a CUDA GPU and per-scene optimisation, and its published work
+targets *urban* scenes rather than farmland. There is no endpoint to call and
+nothing that would run on Streamlit Cloud's CPU tier, so it is not a near-term
+option.
+
+That is exactly what `BaseSceneProvider` is for. If it — or any other renderer —
+ships as a hosted service, it becomes a third provider class and the only change
+elsewhere is the `default_scene_provider` assignment:
 
 ```python
 def render(self, container, lat: float, lng: float, bbox: Optional[dict] = None) -> None: ...
 ```
 
-To add a real 3D module:
-
-1. Create `core/skyfall_scene_provider.py` extending `BaseSceneProvider`
-2. Implement `render()` using `st.components.v1.iframe()` or `st.components.v1.html()`
-3. In `pages/1_Land_Selection.py`, change one import:
-
-```python
-# Before
-from core.scene_provider import default_scene_provider
-# After
-from core.skyfall_scene_provider import SkyFallSceneProvider
-default_scene_provider = SkyFallSceneProvider(api_key=st.secrets["SKYFALL_KEY"])
-```
-
-Zero changes to any other file.
-
 ---
 
 ## Future upgrade paths
 
-| Feature | Where to plug in |
-|---|---|
-| ML yield prediction | `core/recommendation_engine.py` — replace `run()` body, keep signature |
-| Claude API narrative | `recommendation_engine._generate_narrative()` — swap f-string for API call |
-| Real-time mandi prices | `core/crop_data.py` — replace static MSP with Agmarknet API |
-| Hindi PDF | `core/report_generator.py` — add Noto Sans Devanagari `.ttf` via `pdf.add_font()` |
-| Weather integration | New `utils/weather_utils.py` feeding into seasonal_tips |
+| Feature | Status | Where to plug in |
+|---|---|---|
+| 3D terrain view | **Done** | `core/scene_provider.py` — `TerrainSceneProvider` |
+| Hindi PDF | **Done** | `core/report_generator.py` — Noto Sans Devanagari registered |
+| Weather integration | **Done** | `utils/weather_utils.py` → Recommendations page |
+| Real-time mandi prices | Ready for key | `core/price_service.py` — fill `_fetch_from_live_api()` (data.gov.in / Agmarknet) |
+| Claude API narrative | Ready for key | `core/llm_service.py` — currently OpenAI; swap or add an Anthropic client |
+| ML yield prediction | Blocked | Needs historical yield data that does not exist yet |
 
 ---
 
@@ -259,6 +269,8 @@ Zero changes to any other file.
 - Typical yields: ICAR crop production guidelines
 - Intercropping rules: ICAR, state KVK publications, traditional farming literature
 - Satellite imagery: Esri World Imagery (free CDN, no API key required)
+- Terrain elevation: AWS Terrain Tiles / Terrarium (free CDN, no API key required)
+- Weather forecast: Open-Meteo (free for non-commercial use, no API key required)
 
 ---
 

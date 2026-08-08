@@ -13,7 +13,7 @@ from utils.map_utils import (
     make_selection_map, extract_lat_lng, extract_polygon_coords,
     validate_india_bounds, geocode_india, reverse_geocode_state,
 )
-from core.scene_provider import default_scene_provider
+from core.scene_provider import default_scene_provider, bbox_from_polygon
 from core.auth_service import require_login, current_user_email, render_account_widget
 from core.db_service import get_profile, save_phone_number, mark_phone_verified
 from core.phone_auth_service import (
@@ -350,10 +350,15 @@ if confirmed_lat:
 # ── 3D hook ────────────────────────────────────────────────────────────────────
 confirmed_lat = st.session_state.get("lat")
 confirmed_lng = st.session_state.get("lng")
-with st.expander("🛰️ 3D View (Future — Skyfall-GS)" if lang == "en"
-                 else "🛰️ 3D दृश्य (भविष्य — Skyfall-GS)"):
+with st.expander("🛰️ 3D Terrain View" if lang == "en"
+                 else "🛰️ 3D भू-दृश्य"):
     if confirmed_lat and confirmed_lng:
-        default_scene_provider.render(st, lat=confirmed_lat, lng=confirmed_lng)
+        default_scene_provider.render(
+            st,
+            lat=confirmed_lat,
+            lng=confirmed_lng,
+            bbox=bbox_from_polygon(st.session_state.get("polygon")),
+        )
     else:
         st.write("Confirm a location first." if lang == "en" else "पहले स्थान की पुष्टि करें।")
 
