@@ -10,12 +10,21 @@ from core.models import RecommendationResult, FarmInput
 from core.llm_service import enrich_advisory, translate_advisory, is_llm_available
 from core.logger import log_recommendation_event
 from core.price_service import get_price_label
+from core.auth_service import require_login, current_user_email, render_account_widget
+from core.db_service import save_farm_record
+from core.storage_service import upload_report_pdf
 from utils.pdf_utils import build_pdf_bytes
+from utils.weather_utils import fetch_forecast, weather_tips
+from utils.ui_utils import inject_mobile_css
 
 st.set_page_config(page_title="Recommendations | FRO", page_icon="📊", layout="wide")
 
 if "lang" not in st.session_state:
     st.session_state["lang"] = "en"
+
+require_login(st.session_state["lang"])
+inject_mobile_css()
+render_account_widget(st.session_state["lang"])
 
 col_title, col_lang = st.columns([8, 2])
 with col_lang:
@@ -72,6 +81,7 @@ with st.spinner("Calculating..." if lang == "en" else "गणना हो र�
         st.stop()
 
 # ── Log usage event (silent) ──────────────────────────────────────────────────
+_owner_email = current_user_email()
 log_recommendation_event(
     crop=farm_input.crop, state=farm_input.state, season=farm_input.season,
     acreage=farm_input.acreage, gross_revenue=result.gross_revenue,
@@ -79,6 +89,7 @@ log_recommendation_event(
     risk_flag=result.risk_flag, price_source=result.price_source,
     soil_code=result.soil_code, climate_zone=result.climate_zone,
     llm_used=False, irrigation_type=farm_input.irrigation_type,
+    owner_email=_owner_email,
 )
 
 # ── Title ──────────────────────────────────────────────────────────────────────
@@ -172,6 +183,24 @@ st.subheader("📅 Seasonal Tips" if lang=="en" else "📅 मौसमी स�
 for tip in (result.seasonal_tips_hi if lang=="hi" else result.seasonal_tips_en):
     st.markdown(f"- {tip}")
 
+# ── Weather outlook ────────────────────────────────────────────────────────────
+# Live forecast for the confirmed field. Deliberately outside the recommendation
+# engine: the engine stays pure and deterministic, and an unreachable weather
+# API renders nothing here instead of degrading the advisory.
+_w_lat = st.session_state.get("lat")
+_w_lng = st.session_state.get("lng")
+if _w_lat and _w_lng:
+    _forecast = fetch_forecast(_w_lat, _w_lng)
+    _weather_tips = weather_tips(_forecast, lang=lang)
+    if _weather_tips:
+        st.divider()
+        st.subheader("🌦️ Weather Outlook" if lang=="en" else "🌦️ मौसम पूर्वानुमान")
+        for tip in _weather_tips:
+            st.markdown(f"- {tip}")
+        st.caption("Source: Open-Meteo · guidance is indicative, not a substitute for local advice."
+                   if lang=="en"
+                   else "स्रोत: Open-Meteo · यह सुझाव संकेतात्मक है, स्थानीय सलाह का विकल्प नहीं।")
+
 # ── Vertical farming ───────────────────────────────────────────────────────────
 st.divider()
 st.subheader("🏗️ Vertical Farming & Value Addition" if lang=="en" else "🏗️ ऊर्ध्वाधर खेती / मूल्य संवर्धन")
@@ -253,6 +282,7 @@ if is_llm_available():
             risk_flag=result.risk_flag, price_source=result.price_source,
             soil_code=result.soil_code, climate_zone=result.climate_zone,
             llm_used=True, irrigation_type=farm_input.irrigation_type,
+            owner_email=_owner_email,
         )
     else:
         st.info(
@@ -288,13 +318,43 @@ with st.spinner("Generating PDF..." if lang=="en" else "PDF तैयार ह�
         pdf_bytes = None
 
 if pdf_bytes:
+    _pdf_filename = f"farm_report_{farm_input.crop}_{farm_input.acreage:.1f}acres.pdf"
     st.download_button(
         label="⬇️ Download PDF Report (English + Hindi)" if lang=="en"
               else "⬇️ PDF रिपोर्ट डाउनलोड करें (अंग्रेज़ी + हिंदी)",
         data=pdf_bytes,
-        file_name=f"farm_report_{farm_input.crop}_{farm_input.acreage:.1f}acres.pdf",
+        file_name=_pdf_filename,
         mime="application/pdf", type="primary",
     )
+
+    # ── Auto-save to account — sign-in is mandatory at this point, so every
+    # completed run is captured for a complete picture (see auth_service.py) ──
+    _save_key = f"_saved_{_cache_key}"
+    if st.session_state.get(_save_key):
+        st.caption("✅ Saved to your account (My Reports)." if lang == "en"
+                   else "✅ आपके खाते में सहेजा गया (मेरी रिपोर्ट्स)।")
+    else:
+        storage_path = upload_report_pdf(_owner_email, _pdf_filename, pdf_bytes)
+        record_id = save_farm_record(_owner_email, {
+            "crop": farm_input.crop, "acreage": farm_input.acreage,
+            "state": farm_input.state, "season": farm_input.season,
+            "irrigation_type": farm_input.irrigation_type,
+            "lat": farm_input.lat, "lng": farm_input.lng,
+            "soil_type": result.soil_code, "climate_zone": result.climate_zone,
+            "gross_revenue": result.gross_revenue, "total_cost": result.total_cost,
+            "net_margin": result.net_margin, "risk_flag": result.risk_flag,
+            "report_storage_path": storage_path,
+        })
+        if record_id:
+            st.session_state[_save_key] = True
+            st.caption("✅ Saved to your account (My Reports)." if lang == "en"
+                       else "✅ आपके खाते में सहेजा गया (मेरी रिपोर्ट्स)।")
+        else:
+            st.caption(
+                "ℹ️ Not saved — database not configured for this deployment."
+                if lang == "en"
+                else "ℹ️ सहेजा नहीं गया — इस डिप्लॉयमेंट के लिए डेटाबेस कॉन्फ़िगर नहीं है।"
+            )
 
 # ── Navigation ─────────────────────────────────────────────────────────────────
 st.divider()

@@ -17,11 +17,19 @@ import streamlit as st
 import pandas as pd
 from core.data_service import get_portfolio_data, compute_risk_segments
 from core.crop_data import get_crop_display_name
+from core.auth_service import require_admin, current_user_email, render_account_widget
+from core.db_service import get_all_profiles, is_db_configured
+from utils.ui_utils import inject_mobile_css
 
 st.set_page_config(page_title="Risk Intelligence Panel | FRO", page_icon="📈", layout="wide")
 
-# ── Auth notice (placeholder) ──────────────────────────────────────────────────
+# ── Access control — admin allowlist only, never fails open ───────────────────
+require_admin()
+inject_mobile_css()
+
 st.sidebar.warning("⚠️ Internal view. Not for farmer distribution.")
+st.sidebar.caption(f"Signed in as {current_user_email()}")
+render_account_widget()
 
 st.title("📈 Agri Risk Intelligence Panel")
 st.caption("Internal advisory dashboard — for insurance risk analysis only.")
@@ -207,3 +215,38 @@ st.caption(
     "This is a rule-based risk indicator, not a certified actuarial model. "
     "Verify with licensed actuaries before underwriting decisions."
 )
+
+# ── Section 7: Farmer Accounts (admin-only — never shown on any farmer page) ──
+st.divider()
+st.subheader("👤 Farmer Accounts")
+st.caption(
+    "Every signed-in account, from Google OAuth + app usage. This data is "
+    "visible to admins only — farmers never see other accounts, only their "
+    "own saved reports (My Reports)."
+)
+
+if not is_db_configured():
+    st.info("Database not configured — no accounts to show yet.")
+else:
+    profiles = get_all_profiles()
+    if not profiles:
+        st.info("No signed-in accounts yet.")
+    else:
+        acc1, acc2, acc3 = st.columns(3)
+        acc1.metric("Total Accounts", f"{len(profiles):,}")
+        with_phone = sum(1 for p in profiles if p.get("phone_number"))
+        acc2.metric("With Mobile Number", f"{with_phone:,}")
+        acc3.metric("Phone Verified", f"{sum(1 for p in profiles if p.get('phone_verified')):,}",
+                    help="OTP verification is not yet active — see core/phone_auth_service.py")
+
+        profile_rows = [{
+            "Email":        p.get("email", ""),
+            "Name":         p.get("full_name", ""),
+            "Phone":        p.get("phone_number") or "—",
+            "Phone Verified": "✅" if p.get("phone_verified") else "—",
+            "Preferred Lang": p.get("preferred_lang", "—"),
+            "Locale":       p.get("locale", "—"),
+            "First Login":  str(p.get("first_login_at", ""))[:10],
+            "Last Login":   str(p.get("last_login_at", ""))[:10],
+        } for p in profiles]
+        st.dataframe(pd.DataFrame(profile_rows), use_container_width=True, hide_index=True)

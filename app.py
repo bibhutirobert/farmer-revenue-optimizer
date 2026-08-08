@@ -1,14 +1,22 @@
 import streamlit as st
+from core.auth_service import render_account_widget, is_logged_in, current_user_name, begin_login
+from utils.ui_utils import inject_mobile_css, render_how_to_use
 
 st.set_page_config(
     page_title="Farmer Revenue Optimizer",
     page_icon="🌾",
     layout="wide",
-    initial_sidebar_state="expanded",
+    # "auto" collapses the sidebar on narrow screens and expands it on
+    # desktop. Forcing "expanded" made the nav cover the entire phone screen
+    # on arrival, hiding the page behind a panel most farmers won't need.
+    initial_sidebar_state="auto",
 )
 
 if "lang" not in st.session_state:
     st.session_state["lang"] = "en"
+
+inject_mobile_css()
+render_account_widget(st.session_state["lang"])
 
 
 def lang_toggle():
@@ -45,8 +53,16 @@ if lang == "hi":
         > वित्तीय निर्णय लेने से पहले अपने स्थानीय कृषि अधिकारी से सत्यापित करें।
         """
     )
-    if st.button(" शुरू करें — खेत का स्थान चुनें", type="primary", use_container_width=True):
-        st.switch_page("pages/1_Land_Selection.py")
+    if is_logged_in():
+        if st.button(" शुरू करें — खेत का स्थान चुनें", type="primary", use_container_width=True):
+            st.switch_page("pages/1_Land_Selection.py")
+        st.caption(f"स्वागत है, {current_user_name()}।")
+        if st.button("📂 मेरी सहेजी गई रिपोर्ट्स देखें"):
+            st.switch_page("pages/5_My_Reports.py")
+    else:
+        st.info("🔑 शुरू करने के लिए साइन इन करें — यह ऐप का उपयोग करने के लिए आवश्यक है।")
+        if st.button("🔑 Google से साइन इन करें", type="primary", use_container_width=True):
+            begin_login()
 else:
     st.title("🌾 Farmer Revenue Optimizer")
     st.subheader("Higher income, lower costs — for your farm, in your language")
@@ -67,8 +83,20 @@ else:
         > before making financial decisions.
         """
     )
-    if st.button(" Get Started — Select Your Field", type="primary", use_container_width=True):
-        st.switch_page("pages/1_Land_Selection.py")
+    if is_logged_in():
+        if st.button(" Get Started — Select Your Field", type="primary", use_container_width=True):
+            st.switch_page("pages/1_Land_Selection.py")
+        st.caption(f"Welcome back, {current_user_name()}.")
+        if st.button("📂 View My Saved Reports"):
+            st.switch_page("pages/5_My_Reports.py")
+    else:
+        st.info("🔑 Sign in to get started — an account is required to use this app.")
+        if st.button("🔑 Sign in with Google", type="primary", use_container_width=True):
+            begin_login()
+
+# Open by default for someone who hasn't signed in yet — they're the ones
+# most likely to be seeing this for the first time.
+render_how_to_use(lang, expanded=not is_logged_in())
 
 st.divider()
 col1, col2, col3 = st.columns(3)

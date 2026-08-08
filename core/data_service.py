@@ -13,20 +13,18 @@ import random
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from core.logger import load_log_events, get_log_summary
+from core.db_service import get_usage_events
 
 
-# ── Tier 1: Database stub ──────────────────────────────────────────────────────
+# ── Tier 1: Real database (Supabase) ────────────────────────────────────────────
 
 def _fetch_from_database() -> Optional[List[Dict[str, Any]]]:
     """
-    STUB — connect your database here when ready.
-
-    Expected return: list of event dicts matching the same schema
-    as usage_log.jsonl entries.
-
-    Until connected: return None so resolver falls through.
+    Fetch usage events from Supabase (core/db_service.py).
+    Returns None if [supabase] is not configured or the query fails, so the
+    resolver falls through to the local log / synthetic tiers.
     """
-    return None
+    return get_usage_events()
 
 
 # ── Tier 2: Real log data ──────────────────────────────────────────────────────

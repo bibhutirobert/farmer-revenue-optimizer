@@ -39,25 +39,37 @@ farmer-revenue-optimizer-cloud/
 ├── pages/
 │   ├── 1_Land_Selection.py         # Step 1: satellite map + lat/lng capture
 │   ├── 2_Farm_Details.py           # Step 2: crop + cost input form
-│   └── 3_Recommendations.py        # Step 3: results + PDF download
+│   ├── 3_Recommendations.py        # Step 3: results + PDF download + save-to-account
+│   ├── 4_Dashboard.py              # Internal risk panel — admin-only (Google sign-in gate)
+│   └── 5_My_Reports.py             # Signed-in farmer's saved report history
 ├── core/                           # Pure Python domain layer (no Streamlit dependency)
 │   ├── models.py
 │   ├── crop_data.py
 │   ├── cost_calculator.py
 │   ├── recommendation_engine.py
 │   ├── report_generator.py
-│   └── scene_provider.py           # Abstract 3D hook (Skyfall-GS ready)
+│   ├── auth_service.py             # Google sign-in (OIDC) + admin allowlist gate
+│   ├── db_service.py                # Supabase Postgres client (usage events, farm records)
+│   ├── storage_service.py          # Supabase Storage client (saved PDF reports)
+│   └── scene_provider.py           # 3D terrain view (deck.gl + AWS Terrain Tiles)
 ├── utils/
 │   ├── map_utils.py
-│   └── pdf_utils.py
+│   ├── pdf_utils.py
+│   ├── ui_utils.py                # Mobile CSS + how-to-use walkthrough
+│   └── weather_utils.py           # Open-Meteo forecast + farmer guidance
 ├── data/
 │   ├── crops.json                  # 15 major Indian crops, MSP/FRP 2023-24
 │   └── intercrop_rules.json        # 13 intercrop compatibility rules
+├── supabase/
+│   └── schema.sql                  # Postgres schema + RLS + storage bucket setup
 ├── tests/
 │   ├── test_cost_calculator.py
 │   ├── test_recommendation_engine.py
 │   ├── test_report_generator.py
-│   └── test_map_utils.py
+│   ├── test_map_utils.py
+│   ├── test_auth_service.py
+│   ├── test_db_service.py
+│   └── test_storage_service.py
 ├── .streamlit/config.toml
 ├── requirements.txt
 ├── pytest.ini
@@ -100,7 +112,10 @@ pytest
 4. Set repository, branch `main`, main file `app.py`
 5. Click **Deploy**
 
-No secrets or environment variables required for v1.
+**Google Sign-In must be configured before the advisory flow will work** — an
+account is required for every farmer (see "Security & data protection" below).
+Add `[auth]`, `[admin]`, and `[supabase]` to your app's Secrets before or
+right after deploying.
 
 ---
 
@@ -112,42 +127,189 @@ No secrets or environment variables required for v1.
 
 ---
 
-## Skyfall-GS 3D terrain view — how to plug it in
+## Security & data protection
 
-The integration point is at `core/scene_provider.py`. The abstract class `BaseSceneProvider`
-defines one method:
+The app runs entirely server-side (Streamlit) — a browser never talks to the
+database or storage directly, only this Python backend does. That shapes the
+whole security model:
+
+| Layer | How it's protected |
+|---|---|
+| **Secrets** | Never hardcoded. Read from `.streamlit/secrets.toml` (git-ignored) or the platform's secrets manager. `.streamlit/secrets.toml.example` ships only placeholder values. |
+| **Auth** | Google Sign-In via Streamlit's native OIDC (`core/auth_service.py`) is **mandatory** — every farmer must have an account before using Land Selection, Farm Details, Recommendations, or My Reports (`require_login()`). The internal Dashboard needs sign-in **plus** an email on the `[admin] emails` allowlist (`require_admin()`), and admin status lives only in that secrets file, never in the database, so it can't be escalated by editing a row. Every gate fails closed — unconfigured or logged-out always means "denied", never "allowed" or silent guest access. Mobile-number verification is a full OTP implementation (`core/phone_auth_service.py`) — see "Mobile OTP" below. |
+| **Database** | Supabase Postgres (`core/db_service.py`), connected with the **service role** key (server-side only, never sent to the browser). Row Level Security is enabled on every table with no policies granted to `anon`/`authenticated` — even a leaked public key returns zero rows. Per-user access (a farmer only sees their own saved reports) is enforced in application code, scoped by the authenticated `owner_email`. See `supabase/schema.sql` for the full rationale. |
+| **Storage** | Supabase Storage bucket for saved PDF reports (`core/storage_service.py`) is private, objects are namespaced by a one-way hash of the owner's email (never the raw address), and access is only ever via short-lived (1 hour) signed URLs minted server-side for the authenticated owner. |
+| **Transport** | Streamlit Cloud / any standard host serves the app over HTTPS by default. |
+| **Logging** | Usage events (crop, margin, risk flag, and the signed-in `owner_email`) go to Supabase; a legacy Google Sheets webhook and local file remain as optional/fallback sinks. Every sink is best-effort — a missing secret or failed write never crashes the app. |
+| **Data minimization** | The farmer-facing app never exposes another user's data — "My Reports" is scoped to the signed-in account only. Portfolio-level analytics, the full account list (`profiles` table — name, email, phone, login history), and aggregate risk data are visible on the Dashboard to admins only; nothing about other farmers is ever shown to a farmer. |
+
+### What's captured about each signed-in user
+
+On every sign-in, `core/auth_service.sync_profile_once()` upserts a `profiles`
+row (`supabase/schema.sql`) with everything Google's OIDC token provides —
+email, full/given/family name, profile picture URL, locale, and the stable
+Google subject id — plus app-specific fields the token doesn't carry:
+preferred language, self-reported state, and an optional mobile number
+(captured on Page 1, unverified until OTP is wired in). This is the
+"complete picture" record referenced above; admins can browse it under
+**Dashboard → Farmer Accounts**, farmers only ever see their own profile
+implicitly through their own saved reports.
+
+### Authentication setup
+
+1. In Google Cloud Console → APIs & Services → Credentials, create an OAuth
+   2.0 Client ID (type: Web application). Add an authorized redirect URI —
+   `http://localhost:8501/oauth2callback` for local dev, or
+   `https://<your-app>.streamlit.app/oauth2callback` in production.
+2. Add the `[auth]` block to `.streamlit/secrets.toml` (see
+   `secrets.toml.example`) with `client_id`, `client_secret`, `redirect_uri`,
+   and a random `cookie_secret`.
+3. Add your own email under `[admin] emails` to unlock the Dashboard.
+
+### Mobile OTP
+
+`core/phone_auth_service.py` is a complete one-time-code implementation, not
+a placeholder. It generates codes with `secrets`, stores only an
+HMAC-SHA256 digest bound to the phone number (a database dump yields no
+usable codes), expires them after 5 minutes, caps verification attempts at 5
+(a 6-digit code is only 10⁶ combinations — without a cap it is brute-forceable),
+rate-limits sends to 3 per 15 minutes per number, and burns each challenge on
+use so a code can't be replayed. Comparison is constant-time.
+
+Configure a provider under `[sms]`:
+
+| `provider` | What it does |
+|---|---|
+| `dev` | **Sends no SMS** — shows the code on screen so you can exercise the whole flow with no paid account. Never ship this to production: it would let anyone "verify" any number they type. |
+| `msg91` | India-first. Needs a DLT/TRAI-registered sender id + template id (that registration is a real regulatory step and takes a few days). |
+| `twilio` | Needs `account_sid`, `auth_token`, `from_number`. |
+
+Omit `[sms]` entirely and verification stays off — the app then just captures
+numbers unverified, and says so in the UI.
+
+**Phone as a *login* method** (rather than verification on an existing
+account) is deliberately not done with this module. It needs a durable
+session for someone who never touches Google, and Streamlit's `st.login()`
+is OIDC-only with no cookie-writing API — hand-rolling that is where phone
+auth usually goes wrong. The clean route is to add a second OIDC provider
+that does SMS auth (Supabase Auth, Firebase, or an Auth0 phone connection)
+to `[auth]` and call `st.login("<provider>")`. Because every page gates on
+`auth_service.require_login()` rather than on Google specifically, that's a
+config change plus one button — not a rewrite.
+
+### Live mandi prices
+
+`core/mandi_service.py` is Tier 1 of the price resolver: real daily mandi
+prices from the Government of India open-data feed that republishes Agmarknet.
+It needs a **free** API key — register at [data.gov.in](https://data.gov.in),
+then add `[data_gov] api_key` to secrets. Without a key nothing changes; the
+resolver falls through to the cache file and then to hardcoded MSP.
+
+It queries the farmer's own state first and falls back to a national figure
+when the state feed is thin, takes the **median** modal price rather than the
+mean (mandi data carries occasional wild outliers that shouldn't move a
+revenue projection), rejects records outside a sane price band, and requires
+at least three records before reporting a figure. Results are cached 6 hours.
+
+One thing to expect: mandi prices sit **below** MSP for many crops in glut
+season, so projections may come out lower than they did on hardcoded MSP.
+That's the real signal, and the advisory is more honest with it.
+
+### How-to-use walkthrough
+
+The home page carries a "How to use this app" section — written steps in both
+languages, open by default for signed-out visitors. To add a video clip, set
+`[help] video_url` to a YouTube or `.mp4` link, or commit the file to
+`assets/how_to_use.mp4`. The written steps always stay visible underneath, so
+a farmer on a metered connection who never plays the video still gets the
+whole explanation.
+
+### Mobile use
+
+Most farmers will open this on a phone, so the land-selection flow is built
+touch-first:
+
+- **⌖ "Show me where I am"** on the map uses browser geolocation — a farmer
+  standing in their field gets a correct pin in one tap, no searching. This is
+  the primary path; search is the fallback.
+- Search submits from the phone keyboard rather than needing a separate tap on
+  a cramped button.
+- Leaflet's default ~26 px controls are enlarged to 44 px, the minimum
+  comfortable tap target (WCAG 2.5.5 / Apple HIG); primary buttons are 48 px.
+- The redundant marker-drawing tool is gone — tapping the map already drops a
+  pin. Polygon and rectangle remain for tracing a real boundary, which is
+  optional.
+- The layer control starts collapsed and the map is shorter, so the Confirm
+  button isn't pushed below the fold on a phone.
+- The sidebar starts `auto` rather than `expanded`; forced open, it covered the
+  entire screen on arrival.
+
+### Database & storage setup (Supabase)
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. Open the SQL editor and run `supabase/schema.sql` — creates
+   `usage_events`, `farm_records`, `profiles`, `otp_challenges`, and enables
+   RLS on all four.
+3. Under Storage, create a bucket named `farm-reports` and leave **Public**
+   turned **off**.
+4. Add the `[supabase]` block to secrets with your project `url` and the
+   **service role** key (Project Settings → API) — not the anon/public key.
+
+`[auth]` is required — without it, sign-in is unavailable and the entire
+farmer flow (Land Selection onward) stays locked, by design. `[supabase]` is
+additive on top of that: without it, sign-in still works but nothing is
+saved (no history, no admin account list) and the Dashboard falls back to
+its synthetic demo dataset.
+
+---
+
+## 3D terrain view
+
+Live on Land Selection, under **🛰️ 3D Terrain View**. It renders a tilted,
+rotatable view of the confirmed field: elevation from
+[AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) (Terrarium
+encoding), textured with the same Esri World Imagery the 2D map uses, with the
+drawn field outlined in yellow.
+
+**No API key, no GPU, no paid tier.** Both tile sources are public CDNs and
+deck.gl does the work in the browser, so it runs as-is on free Streamlit Cloud.
+If `pydeck` is ever missing, the provider degrades to an informational notice
+rather than breaking the page.
+
+Terrain tiles are ~30 m resolution — enough to read a slope or a valley, not
+individual bunds.
+
+### On Skyfall-GS
+
+The earlier scaffold assumed Skyfall-GS was a key-based tile service. It is not:
+it is a research codebase that synthesises 3D Gaussian splats from satellite
+imagery, needing a CUDA GPU and per-scene optimisation, and its published work
+targets *urban* scenes rather than farmland. There is no endpoint to call and
+nothing that would run on Streamlit Cloud's CPU tier, so it is not a near-term
+option.
+
+That is exactly what `BaseSceneProvider` is for. If it — or any other renderer —
+ships as a hosted service, it becomes a third provider class and the only change
+elsewhere is the `default_scene_provider` assignment:
 
 ```python
 def render(self, container, lat: float, lng: float, bbox: Optional[dict] = None) -> None: ...
 ```
 
-To add a real 3D module:
-
-1. Create `core/skyfall_scene_provider.py` extending `BaseSceneProvider`
-2. Implement `render()` using `st.components.v1.iframe()` or `st.components.v1.html()`
-3. In `pages/1_Land_Selection.py`, change one import:
-
-```python
-# Before
-from core.scene_provider import default_scene_provider
-# After
-from core.skyfall_scene_provider import SkyFallSceneProvider
-default_scene_provider = SkyFallSceneProvider(api_key=st.secrets["SKYFALL_KEY"])
-```
-
-Zero changes to any other file.
-
 ---
 
 ## Future upgrade paths
 
-| Feature | Where to plug in |
-|---|---|
-| ML yield prediction | `core/recommendation_engine.py` — replace `run()` body, keep signature |
-| Claude API narrative | `recommendation_engine._generate_narrative()` — swap f-string for API call |
-| Real-time mandi prices | `core/crop_data.py` — replace static MSP with Agmarknet API |
-| Hindi PDF | `core/report_generator.py` — add Noto Sans Devanagari `.ttf` via `pdf.add_font()` |
-| Weather integration | New `utils/weather_utils.py` feeding into seasonal_tips |
+| Feature | Status | Where to plug in |
+|---|---|---|
+| 3D terrain view | **Done** | `core/scene_provider.py` — `TerrainSceneProvider` |
+| Hindi PDF | **Done** | `core/report_generator.py` — Noto Sans Devanagari registered |
+| Weather integration | **Done** | `utils/weather_utils.py` → Recommendations page |
+| Real-time mandi prices | **Done** | `core/mandi_service.py` — Tier 1 of the price resolver |
+| How-to-use walkthrough | **Done** | `utils/ui_utils.py` — written steps, optional video |
+| Mobile-first land selection | **Done** | `utils/map_utils.py` — locate control + touch targets |
+| Claude API narrative | Ready for key | `core/llm_service.py` — currently OpenAI; swap or add an Anthropic client |
+| ML yield prediction | Blocked | Needs historical yield data that does not exist yet |
 
 ---
 
@@ -157,6 +319,9 @@ Zero changes to any other file.
 - Typical yields: ICAR crop production guidelines
 - Intercropping rules: ICAR, state KVK publications, traditional farming literature
 - Satellite imagery: Esri World Imagery (free CDN, no API key required)
+- Terrain elevation: AWS Terrain Tiles / Terrarium (free CDN, no API key required)
+- Weather forecast: Open-Meteo (free for non-commercial use, no API key required)
+- Mandi prices: data.gov.in / Agmarknet daily market feed (free API key required)
 
 ---
 
