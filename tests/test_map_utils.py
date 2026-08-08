@@ -144,3 +144,64 @@ def test_layer_control_starts_collapsed():
     """Expanded, it covers a real slice of a phone screen right where thumbs
     land when panning."""
     assert '"collapsed": true' in _selection_map_html()
+
+
+# ── Polygon centroid correctness ──────────────────────────────────────────────
+# Regression guards for two distinct defects in the old vertex-average:
+#   1. GeoJSON rings repeat the first position to close, so it was counted twice
+#   2. averaging vertices is not a centroid when they are unevenly spaced
+
+from utils.map_utils import ring_centroid
+
+
+SQUARE = [[70, 20], [72, 20], [72, 22], [70, 22], [70, 20]]
+
+
+def test_closing_vertex_is_not_counted_twice():
+    """The naive average of this closed ring gives 20.8, not 21."""
+    lng, lat = ring_centroid(SQUARE)
+    assert abs(lat - 21.0) < 1e-9
+    assert abs(lng - 71.0) < 1e-9
+
+
+def test_closed_and_unclosed_rings_agree():
+    assert ring_centroid(SQUARE) == pytest.approx(ring_centroid(SQUARE[:-1]))
+
+
+def test_centroid_ignores_how_densely_an_edge_was_clicked():
+    """Same unit square, but with extra vertices along the bottom edge — as
+    happens when a farmer traces one side more carefully. The shape has not
+    changed, so the centre must not move; a vertex average would drag it down
+    to y ~ 0.29."""
+    plain = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]
+    dense = [[0, 0], [0.25, 0], [0.5, 0], [0.75, 0], [1, 0], [1, 1], [0, 1], [0, 0]]
+    assert ring_centroid(dense) == pytest.approx(ring_centroid(plain))
+    assert ring_centroid(dense)[1] == pytest.approx(0.5)
+
+
+def test_triangle_centroid_is_the_vertex_average():
+    """For a triangle the two definitions coincide — a sanity anchor."""
+    lng, lat = ring_centroid([[0, 0], [3, 0], [0, 3], [0, 0]])
+    assert (lng, lat) == pytest.approx((1.0, 1.0))
+
+
+def test_winding_order_does_not_matter():
+    reversed_ring = list(reversed(SQUARE))
+    assert ring_centroid(reversed_ring) == pytest.approx(ring_centroid(SQUARE))
+
+
+def test_degenerate_rings_fall_back_instead_of_dividing_by_zero():
+    collinear = [[0, 0], [1, 1], [2, 2], [0, 0]]      # encloses no area
+    assert ring_centroid(collinear) == pytest.approx((1.0, 1.0))
+
+    two_points = [[0, 0], [2, 4]]
+    assert ring_centroid(two_points) == pytest.approx((1.0, 2.0))
+
+    single = [[5, 7]]
+    assert ring_centroid(single) == pytest.approx((5.0, 7.0))
+
+
+def test_malformed_rings_return_none_rather_than_raising():
+    assert ring_centroid([]) is None
+    assert ring_centroid(None) is None
+    assert ring_centroid([["x", "y"]]) is None

@@ -178,6 +178,76 @@ def make_selection_map(
     return m
 
 
+def _vertex_mean(points: List[List[float]]) -> Optional[Tuple[float, float]]:
+    """Plain average of positions, as (x, y) == (lng, lat)."""
+    if not points:
+        return None
+    return (sum(p[0] for p in points) / len(points),
+            sum(p[1] for p in points) / len(points))
+
+
+def ring_centroid(ring: List[List[float]]) -> Optional[Tuple[float, float]]:
+    """
+    True centroid of a GeoJSON linear ring, returned as (lng, lat).
+
+    Two things this gets right that a plain average of the coordinates does not:
+
+    1. GeoJSON rings are *closed* — RFC 7946 requires the last position to
+       repeat the first — so averaging every entry counts one vertex twice and
+       drags the result toward wherever the user started drawing. For a
+       rectangle that is a 20% pull toward the first corner, every time.
+
+    2. Averaging vertices is only the centroid when they are evenly spread.
+       Tracing a field by hand puts more clicks along the fiddly edges, and a
+       vertex average leans toward whichever side got clicked most. The
+       area-weighted (shoelace) centroid does not care how the outline was
+       sampled.
+
+    Falls back to the vertex mean for degenerate rings — fewer than three
+    distinct points, or collinear ones enclosing no area — where the shoelace
+    formula is undefined.
+
+    The maths is planar on raw degrees rather than geodesic. Over a field-sized
+    polygon that is a sub-metre approximation, and the callers here (state
+    lookup, soil, weather grid) are orders of magnitude coarser than that.
+    """
+    if not ring:
+        return None
+
+    try:
+        points = [[float(c[0]), float(c[1])] for c in ring if c is not None and len(c) >= 2]
+    except (TypeError, ValueError):
+        return None
+    if not points:
+        return None
+
+    # Drop the repeated closing position so no vertex is counted twice.
+    if len(points) > 1 and points[0] == points[-1]:
+        points = points[:-1]
+    if not points:
+        return None
+    if len(points) < 3:
+        return _vertex_mean(points)
+
+    doubled_area = 0.0
+    cx = 0.0
+    cy = 0.0
+    n = len(points)
+    for i in range(n):
+        x0, y0 = points[i]
+        x1, y1 = points[(i + 1) % n]
+        cross = (x0 * y1) - (x1 * y0)
+        doubled_area += cross
+        cx += (x0 + x1) * cross
+        cy += (y0 + y1) * cross
+
+    area = doubled_area / 2.0
+    if abs(area) < 1e-12:          # collinear / zero-area ring
+        return _vertex_mean(points)
+
+    return (cx / (6.0 * area), cy / (6.0 * area))
+
+
 def extract_lat_lng(st_folium_result: Optional[dict]) -> Tuple[Optional[float], Optional[float]]:
     if not st_folium_result:
         return None, None
@@ -190,9 +260,10 @@ def extract_lat_lng(st_folium_result: Optional[dict]) -> Tuple[Optional[float], 
             return float(coords[1]), float(coords[0])
         if geom_type in ("Polygon", "MultiPolygon") and coords:
             outer = coords[0] if geom_type == "Polygon" else coords[0][0]
-            if outer:
-                return (sum(float(c[1]) for c in outer) / len(outer),
-                        sum(float(c[0]) for c in outer) / len(outer))
+            centre = ring_centroid(outer) if outer else None
+            if centre:
+                lng, lat = centre
+                return lat, lng
         if geom_type == "LineString" and coords:
             return (sum(float(c[1]) for c in coords) / len(coords),
                     sum(float(c[0]) for c in coords) / len(coords))
